@@ -271,11 +271,11 @@ const HWPX_TEMPLATES = {
                         <thead>
                             <tr
                                 class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                                <th class="py-3 px-4 w-12 text-center">번호</th>
-                                <th class="py-3 px-4">감사 자가진단 및 점검 내용</th>
-                                <th class="py-3 px-4 w-48 text-center">점검결과 (○, △, ×)</th>
-                                <th class="py-3 px-4 w-64">미흡/미이행 내용 및 조치사항</th>
-                                <th class="py-3 px-4 w-20 text-center">점검대상</th>
+                                <th class="py-3 px-4 w-12 text-center whitespace-nowrap">번호</th>
+                                <th class="py-3 px-4 min-w-[15rem]">감사 자가진단 및 점검 내용</th>
+                                <th class="py-3 px-4 min-w-[14rem] text-center whitespace-nowrap">점검결과 (○, △, ×)</th>
+                                <th class="py-3 px-4 w-[20rem] min-w-[15rem]">미흡/미이행 내용 및 조치사항</th>
+                                <th class="py-3 px-4 w-24 text-center whitespace-nowrap">점검대상</th>
                             </tr>
                         </thead>
                         <tbody id="checklistTableBody" class="divide-y divide-slate-100 text-sm">
@@ -3828,9 +3828,9 @@ const checklistDatabase = {
             </td>
             <td class="py-3 px-4 text-center">
               <div class="inline-flex gap-1">
-                <button onclick="setItemResult('${activeCat.id}', '${item.no}', 'O')" class="px-3 py-1.5 rounded text-[11px] font-bold border transition-colors ${btnOClass}">○ 이행</button>
-                <button onclick="setItemResult('${activeCat.id}', '${item.no}', 'S')" class="px-3 py-1.5 rounded text-[11px] font-bold border transition-colors ${btnSClass}">△ 미흡</button>
-                <button onclick="setItemResult('${activeCat.id}', '${item.no}', 'X')" class="px-3 py-1.5 rounded text-[11px] font-bold border transition-colors ${btnXClass}">× 미이행</button>
+                <button onclick="setItemResult('${activeCat.id}', '${item.no}', 'O')" class="px-2 py-1 rounded text-[10px] font-bold border transition-colors ${btnOClass} whitespace-nowrap">○ 이행</button>
+                <button onclick="setItemResult('${activeCat.id}', '${item.no}', 'S')" class="px-2 py-1 rounded text-[10px] font-bold border transition-colors ${btnSClass} whitespace-nowrap">△ 미흡</button>
+                <button onclick="setItemResult('${activeCat.id}', '${item.no}', 'X')" class="px-2 py-1 rounded text-[10px] font-bold border transition-colors ${btnXClass} whitespace-nowrap">× 미이행</button>
               </div>
             </td>
             <td class="py-3 px-4">
