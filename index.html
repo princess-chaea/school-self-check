@@ -1340,15 +1340,21 @@
                 .then(response => {
                     if (response.success && response.data) {
                         response.data.forEach(row => {
-                            const p = row.period || 'first';
-                            const actualCatId = row.catId ? row.catId.split(' ')[0] : row.catId;
+                            if (!row.key) return;
+                            const parts = row.key.split('_');
+                            if (parts.length < 4) return;
+                            
+                            const p = parts[0];
+                            const s = parts[1];
+                            const actualCatId = parts[2];
+                            const actualItemNo = parts.slice(3).join('_');
                             
                             if (userProgress[p] && 
-                                userProgress[p][row.sector] && 
-                                userProgress[p][row.sector][actualCatId] && 
-                                userProgress[p][row.sector][actualCatId][row.itemNo]) {
+                                userProgress[p][s] && 
+                                userProgress[p][s][actualCatId] && 
+                                userProgress[p][s][actualCatId][actualItemNo]) {
                                 
-                                userProgress[p][row.sector][actualCatId][row.itemNo] = {
+                                userProgress[p][s][actualCatId][actualItemNo] = {
                                     result: row.result,
                                     action: row.action,
                                     inspector: row.inspector,
