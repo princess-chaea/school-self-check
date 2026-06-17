@@ -692,18 +692,39 @@
                     const parsed = JSON.parse(cache);
                     if(parsed.progress) {
                         // 기존 상태 병합
-                        Object.keys(parsed.progress).forEach(sect => {
-                            if(userProgress[sect]) {
-                                Object.keys(parsed.progress[sect]).forEach(cat => {
-                                    if(userProgress[sect][cat]) {
-                                        Object.keys(parsed.progress[sect][cat]).forEach(item => {
-                                            const cachedItem = parsed.progress[sect][cat][item];
-                                            if (cachedItem.result) {
-                                                userProgress[sect][cat][item] = cachedItem;
+                        Object.keys(parsed.progress).forEach(key1 => {
+                            if (key1 === 'first' || key1 === 'second') {
+                                // 신규 버전 캐시 (period 존재)
+                                const period = key1;
+                                Object.keys(parsed.progress[period]).forEach(sect => {
+                                    if (userProgress[period][sect]) {
+                                        Object.keys(parsed.progress[period][sect]).forEach(cat => {
+                                            if (userProgress[period][sect][cat]) {
+                                                Object.keys(parsed.progress[period][sect][cat]).forEach(item => {
+                                                    const cachedItem = parsed.progress[period][sect][cat][item];
+                                                    if (cachedItem && cachedItem.result) {
+                                                        userProgress[period][sect][cat][item] = cachedItem;
+                                                    }
+                                                });
                                             }
                                         });
                                     }
                                 });
+                            } else {
+                                // 구버전 캐시 (바로 academic, finance가 오는 경우)
+                                const sect = key1;
+                                if (userProgress['first'][sect]) {
+                                    Object.keys(parsed.progress[sect]).forEach(cat => {
+                                        if (userProgress['first'][sect][cat]) {
+                                            Object.keys(parsed.progress[sect][cat]).forEach(item => {
+                                                const cachedItem = parsed.progress[sect][cat][item];
+                                                if (cachedItem && cachedItem.result) {
+                                                    userProgress['first'][sect][cat][item] = cachedItem;
+                                                }
+                                            });
+                                        }
+                                    });
+                                }
                             }
                         });
                     }
@@ -887,7 +908,7 @@
             tbody.innerHTML = '';
 
             activeCat.items.forEach(item => {
-                const state = userProgress[currentSector][activeCat.id][item.no];
+                const state = userProgress[currentPeriod][currentSector][activeCat.id][item.no];
                 const result = state ? state.result : '';
                 const action = state ? state.action : '';
                 const inspector = state ? state.inspector : '';
