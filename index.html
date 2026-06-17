@@ -274,7 +274,7 @@ const HWPX_TEMPLATES = {
                             <tr
                                 class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                                 <th class="py-3 px-4 w-12 text-center whitespace-nowrap">번호</th>
-                                <th class="py-3 px-4 min-w-[15rem]">감사 자가진단 및 점검 내용</th>
+                                <th class="py-3 px-4 w-[20rem] max-w-[20rem] min-w-[15rem]">감사 자가진단 및 점검 내용</th>
                                 <th class="py-3 px-4 min-w-[14rem] text-center whitespace-nowrap">점검결과 (○, △, ×)</th>
                                 <th class="py-3 px-4 w-[20rem] min-w-[15rem]">미흡/미이행 내용 및 조치사항</th>
                                 <th class="py-3 px-4 w-24 text-center whitespace-nowrap">점검대상</th>
@@ -3548,39 +3548,55 @@ const checklistDatabase = {
         /**
          * 페이지 로드 시 구글 시트로부터 실시간 데이터 전체 로드 및 초기화
          */
+        function applyServerDataToProgress(dataList) {
+            dataList.forEach(row => {
+                if (!row.key) return;
+                const parts = row.key.split('_');
+                if (parts.length < 4) return;
+                
+                const p = parts[0];
+                const s = parts[1];
+                const actualCatId = parts[2];
+                const actualItemNo = parts.slice(3).join('_');
+                
+                if (userProgress[p] && 
+                    userProgress[p][s] && 
+                    userProgress[p][s][actualCatId] && 
+                    userProgress[p][s][actualCatId][actualItemNo]) {
+                    
+                    userProgress[p][s][actualCatId][actualItemNo] = {
+                        result: row.result,
+                        action: row.action,
+                        inspector: row.inspector,
+                        date: row.date
+                    };
+                }
+            });
+            loadActiveCategoryItems();
+            renderCategoryMenu();
+            updateDashboardStats();
+        }
+
         function loadExistingDataFromServer() {
-            setSyncStatus('loading', '시트에서 데이터를 읽어오는 중...');
+            setSyncStatus('loading', '시트 동기화 중...');
             
+            // 1. 브라우저 캐시에서 우선 즉시 로딩 (속도 최적화)
+            try {
+                const cached = localStorage.getItem('chklist_cache_data');
+                if (cached) {
+                    const parsed = JSON.parse(cached);
+                    applyServerDataToProgress(parsed);
+                }
+            } catch(e) { console.error(e); }
+            
+            // 2. 서버 통신 (비동기)
             fetch(SCRIPT_URL)
                 .then(res => res.json())
                 .then(response => {
                     if (response.success && response.data) {
-                        response.data.forEach(row => {
-                            if (!row.key) return;
-                            const parts = row.key.split('_');
-                            if (parts.length < 4) return;
-                            
-                            const p = parts[0];
-                            const s = parts[1];
-                            const actualCatId = parts[2];
-                            const actualItemNo = parts.slice(3).join('_');
-                            
-                            if (userProgress[p] && 
-                                userProgress[p][s] && 
-                                userProgress[p][s][actualCatId] && 
-                                userProgress[p][s][actualCatId][actualItemNo]) {
-                                
-                                userProgress[p][s][actualCatId][actualItemNo] = {
-                                    result: row.result,
-                                    action: row.action,
-                                    inspector: row.inspector,
-                                    date: row.date
-                                };
-                            }
-                        });
-                        loadActiveCategoryItems();
-                        renderCategoryMenu();
-                        updateDashboardStats();
+                        applyServerDataToProgress(response.data);
+                        // 최신 데이터 캐시 저장
+                        localStorage.setItem('chklist_cache_data', JSON.stringify(response.data));
                         setSyncStatus('ready', '시트 연동 및 로드 완료');
                     } else {
                         setSyncStatus('ready', '서버 데이터가 비어있음 (새 시트)');
@@ -3747,7 +3763,7 @@ const checklistDatabase = {
                 const itemHtml = `
           <button onclick="selectCategory(${idx})" class="w-full text-left p-2.5 rounded-lg transition-all flex items-center justify-between text-xs ${activeClass} mb-1">
             <div class="flex flex-col gap-1 pr-2">
-              <span class="text-[10px] text-slate-400 font-mono">구분 ${cat.id}</span>
+              <span class="text-[10px] text-slate-400 font-mono">${cat.id}</span>
               <span class="truncate max-w-[190px]">${cat.title}</span>
             </div>
             <span class="text-[10px] bg-white border border-slate-200 px-1.5 py-0.5 rounded text-slate-500 font-mono shadow-sm">
@@ -3815,7 +3831,7 @@ const checklistDatabase = {
                 const rowHtml = `
           <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
             <td class="py-3 px-4 font-mono text-center text-slate-400 text-xs">${item.no}</td>
-            <td class="py-3 px-4 text-slate-700 font-medium leading-relaxed">
+            <td class="py-3 px-4 text-slate-700 font-medium leading-relaxed max-w-[20rem]">
               
               <div class="group relative inline-block cursor-help w-full">
                 <span class="block truncate max-w-full text-slate-800 font-semibold">${
@@ -4068,8 +4084,11 @@ const checklistDatabase = {
         }
 
         async function downloadHWPX() {
-            const loader = document.getElementById('hwpxLoading');
-            if (loader) loader.classList.remove('hidden');
+            const btn = document.getElementById('btnDownloadHWPX');
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> 생성 중...';
+            btn.disabled = true;
+            btn.classList.add('opacity-70', 'cursor-not-allowed');
             if (typeof HWPX_TEMPLATES === 'undefined' || !HWPX_TEMPLATES[currentSector]) {
                 showToast("내장된 템플릿을 찾을 수 없습니다.");
                 return;
@@ -4093,41 +4112,39 @@ const checklistDatabase = {
                 for (const fileName of sectionFiles) {
                     let xmlText = await loadedZip.file(fileName).async("string");
                     
-                    if (userProgress[currentPeriod] && userProgress[currentPeriod][currentSector]) {
-                        const sectorData = userProgress[currentPeriod][currentSector];
-                        Object.keys(sectorData).forEach(catId => {
-                            const catObj = sectorData[catId];
-                            Object.keys(catObj).forEach(itemNo => {
-                                const state = catObj[itemNo];
-                                
-                                let resSymbol = " ";
-                                if (state.result === 'O') resSymbol = "○";
-                                else if (state.result === 'S') resSymbol = "△";
-                                else if (state.result === 'X') resSymbol = "×";
-                                else if (state.result === 'N') resSymbol = "-";
-                                
-                                const actionText = state.action ? state.action : " ";
-                                
-                                const resTag = `[[${catId}_${itemNo}_R]]`;
-                                const actTag = `[[${catId}_${itemNo}_A]]`;
-                                
-                                const escapeXml = (unsafe) => {
-                                    return unsafe.replace(/[<>&'"]/g, function (c) {
-                                        switch (c) {
-                                            case '<': return '&lt;';
-                                            case '>': return '&gt;';
-                                            case '&': return '&amp;';
-                                            case "\'": return '&apos;';
-                                            case '"': return '&quot;';
-                                        }
-                                    });
-                                };
-                                
-                                xmlText = xmlText.split(resTag).join(escapeXml(resSymbol));
-                                xmlText = xmlText.split(actTag).join(escapeXml(actionText));
-                            });
+                    const cats = checklistDatabase[currentSector].categories;
+                    cats.forEach(cat => {
+                        cat.items.forEach(it => {
+                            const state = (userProgress[currentPeriod] && userProgress[currentPeriod][currentSector] && userProgress[currentPeriod][currentSector][cat.id]) ? userProgress[currentPeriod][currentSector][cat.id][it.no] : null;
+                            
+                            let resSymbol = " ";
+                            if (state && state.result === 'O') resSymbol = "○";
+                            else if (state && state.result === 'S') resSymbol = "△";
+                            else if (state && state.result === 'X') resSymbol = "×";
+                            else if (state && state.result === 'N') resSymbol = "-";
+                            
+                            const actionText = (state && state.action) ? state.action : " ";
+                            
+                            const resTag = `[[${cat.id}_${it.no}_R]]`;
+                            const actTag = `[[${cat.id}_${it.no}_A]]`;
+                            
+                            const escapeXml = (unsafe) => {
+                                if (!unsafe) return "";
+                                return unsafe.toString().replace(/[<>&'"]/g, function (c) {
+                                    switch (c) {
+                                        case '<': return '&lt;';
+                                        case '>': return '&gt;';
+                                        case '&': return '&amp;';
+                                        case "\'": return '&apos;';
+                                        case '"': return '&quot;';
+                                    }
+                                });
+                            };
+                            
+                            xmlText = xmlText.split(resTag).join(escapeXml(resSymbol));
+                            xmlText = xmlText.split(actTag).join(escapeXml(actionText));
                         });
-                    }
+                    });
                     
                     loadedZip.file(fileName, xmlText);
                 }
@@ -4140,7 +4157,9 @@ const checklistDatabase = {
                 console.error(e);
                 showToast("HWPX 처리 중 오류가 발생했습니다: " + e.message);
             } finally {
-                if (loader) loader.classList.add('hidden');
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+                btn.classList.remove('opacity-70', 'cursor-not-allowed');
             }
         }        function buildPrintTable() {
             const container = document.getElementById('printTableContainer');
@@ -4283,13 +4302,7 @@ const checklistDatabase = {
 <!-- Toast Container -->
 <div id="toastContainer" class="fixed top-5 right-5 z-[100] flex flex-col gap-2"></div>
 
-<!-- HWPX Loading Overlay -->
-<div id="hwpxLoading" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[999] hidden flex items-center justify-center">
-    <div class="bg-white p-6 rounded-2xl shadow-2xl flex items-center gap-4">
-        <div class="animate-spin rounded-full h-8 w-8 border-4 border-slate-200 border-t-blue-600"></div>
-        <p class="font-bold text-slate-800 text-lg">HWPX 다운로드 준비 중...</p>
-    </div>
-</div>
+
 
 <!-- Custom Confirm Modal -->
 <div id="customConfirmModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[999] hidden flex items-center justify-center">
