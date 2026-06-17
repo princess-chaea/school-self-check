@@ -4527,7 +4527,24 @@
             const tbody = document.getElementById('checklistTableBody');
             tbody.innerHTML = '';
 
+            let seqCounter = 1;
             activeCat.items.forEach(item => {
+
+                if (item.isGroupHeader || !item.no) {
+                    const rowHtml = `
+                        <tr class="bg-white border-b-2 border-indigo-100">
+                            <td colspan="5" class="py-4 px-4 text-left">
+                                <span class="inline-block bg-indigo-100 text-indigo-800 font-extrabold text-sm px-3 py-1.5 rounded-lg shadow-sm border border-indigo-200">
+                                    <i class="fa-solid fa-layer-group mr-1.5 opacity-70"></i>
+                                    ${item.content}
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.insertAdjacentHTML('beforeend', rowHtml);
+                    return;
+                }
+
                 const state = userProgress[currentPeriod][currentSector][activeCat.id][item.no];
                 const result = state ? state.result : '';
                 const action = state ? state.action : '';
@@ -4565,7 +4582,7 @@
 
                 const rowHtml = `
           <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-            <td class="py-3 px-4 font-mono text-center text-slate-400 text-xs">${item.no}</td>
+            <td class="py-3 px-4 font-mono text-center text-slate-400 text-xs font-bold">${seqCounter++}</td>
             <td class="py-3 px-4 text-slate-700 font-medium leading-relaxed max-w-[20rem]">
               
               <div class="group relative inline-block cursor-help w-full">
@@ -4758,6 +4775,7 @@
             ['academic', 'finance'].forEach(sector => {
                 checklistDatabase[sector].categories.forEach(cat => {
                     cat.items.forEach(it => {
+                            if (it.isGroupHeader || !it.no) return;
                         totalCount++;
                         const state = userProgress[currentPeriod][sector][cat.id][it.no];
                         if (state && state.result) {
@@ -4849,6 +4867,7 @@
                     const cats = checklistDatabase[currentSector].categories;
                     cats.forEach(cat => {
                         cat.items.forEach(it => {
+                            if (it.isGroupHeader || !it.no) return;
                             const state = (userProgress[currentPeriod] && userProgress[currentPeriod][currentSector] && userProgress[currentPeriod][currentSector][cat.id]) ? userProgress[currentPeriod][currentSector][cat.id][it.no] : null;
 
                             let resSymbol = " ";
@@ -4859,8 +4878,8 @@
 
                             const actionText = (state && state.action) ? state.action : " ";
 
-                            const resTag = `[[${cat.id}_${it.no}_R]]`;
-                            const actTag = `[[${cat.id}_${it.no}_A]]`;
+                            const resTag = `[[${it.no}]]`;
+                            const actTag = `[[${it.actionCode}]]`;
 
                             const escapeXml = (unsafe) => {
                                 if (!unsafe) return "";
@@ -4958,7 +4977,18 @@
                     </tr>
                 `;
 
+                let printSeqCounter = 1;
                 cat.items.forEach((it, idx) => {
+                    if (it.isGroupHeader || !it.no) {
+                        fullHtml += `
+                            <tr style="page-break-inside: avoid;">
+                                <td colspan="5" style="border: 1px solid #000; background-color: #fcfcfc; padding: 10px; font-weight: bold; font-size: 12pt;">
+                                    ${it.content}
+                                </td>
+                            </tr>
+                        `;
+                        return;
+                    }
                     const state = userProgress[currentPeriod][currentSector][cat.id][it.no];
                     let resSymbol = "";
                     if (state && state.result === 'O') resSymbol = "○";
@@ -4970,7 +5000,7 @@
 
                     fullHtml += `
                         <tr style="page-break-inside: avoid;">
-                            <td style="border: 1px solid #000; padding: 8px; text-align: center;">${idx + 1}</td>
+                            <td style="border: 1px solid #000; padding: 8px; text-align: center;">${printSeqCounter++}</td>
                             <td style="border: 1px solid #000; padding: 8px 10px; line-height: 1.5; text-align: left;">${it.content}</td>
                             <td style="border: 1px solid #000; padding: 8px; text-align: center; font-weight: bold; font-size: 13pt;">${resSymbol}</td>
                             <td style="border: 1px solid #000; padding: 8px; font-size: 10pt; text-align: left;">${actText}</td>
