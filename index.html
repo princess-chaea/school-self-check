@@ -4,342 +4,226 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>하주초등학교 자율 자가진단 시스템</title>
-    <!-- Tailwind CSS -->
+    <title>학교 자율 자가진단 시스템</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
-
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
+        
         body {
             font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f1f5f9;
         }
-
-        /* 인쇄 모드 전용 스타일 레이아웃 (개인정보 완벽 마스킹) */
+        
+        .item-badge {
+            display: inline-flex;
+            align-items: center;
+        }
+        
+        /* Print Styles */
         @media print {
-            body {
-                background-color: #ffffff !important;
-                color: #000000 !important;
-                font-size: 11pt !important;
-            }
-
-            .no-print {
-                display: none !important;
-            }
-
-            .print-area {
-                display: block !important;
-                width: 100% !important;
-                margin: 0 !important;
-                padding: 0 !important;
-            }
-
-            .print-table {
-                width: 100% !important;
-                border-collapse: collapse !important;
-                margin-top: 15px !important;
-            }
-
-            .print-table th,
-            .print-table td {
-                border: 1px solid #008000 !important;
-                padding: 6px 8px !important;
-                font-size: 10pt !important;
-                color: #000000 !important;
-            }
-
-            .print-table {
-                width: 100% !important;
-                border-collapse: collapse !important;
-                margin-top: 15px !important;
-                border: 2px solid #008000 !important;
-            }
-
-            .print-table th {
-                background-color: #eaffea !important;
-                font-weight: bold !important;
-                text-align: center !important;
-            }
-
-            .page-break {
-                page-break-before: always;
-            }
-
-            /* 인쇄물에서는 문항별 서명 배지(이름, 날짜)를 전면 숨김 처리 */
-            .item-badge {
-                display: none !important;
-            }
+            body { background: white !important; }
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            table { page-break-inside: auto; }
+            tr { page-break-inside: avoid; page-break-after: auto; }
+            thead { display: table-header-group; }
+            tfoot { display: table-footer-group; }
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
         }
     </style>
-
-    <!-- JSZip for HWPX processing -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-    <script src="templates.js"></script>
 </head>
 
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+<body class="text-slate-800 h-screen flex overflow-hidden selection:bg-indigo-100 selection:text-indigo-900">
 
-    <!-- 대시보드 및 네비게이션 (no-print) -->
-    <header class="bg-blue-900 text-white shadow-lg no-print">
-        <div
-            class="max-w-[1600px] mx-auto px-4 py-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
-            <div class="flex items-center gap-3">
-                <div class="bg-white text-blue-950 p-2.5 rounded-lg shadow">
-                    <i class="fa-solid fa-clipboard-check text-2xl"></i>
-                </div>
-                <div>
-                    <h1 class="text-xl font-bold tracking-tight">자율적 내부통제 자가진단 자율점검표</h1>
-                    <p class="text-xs text-blue-200 mt-0.5">하주초등학교 실시간 협업 수합 시스템</p>
-                </div>
+    <!-- Sidebar -->
+    <aside class="w-72 bg-white border-r border-slate-200 flex flex-col shadow-sm z-20 no-print relative">
+        <!-- Logo Area -->
+        <div class="h-16 flex items-center px-6 border-b border-slate-100 bg-gradient-to-r from-indigo-600 to-blue-700 text-white">
+            <i class="fa-solid fa-clipboard-check text-xl mr-3 opacity-90"></i>
+            <h1 class="text-lg font-bold tracking-tight">자가진단 시스템</h1>
+        </div>
+        
+        <!-- Period & Sector Toggles -->
+        <div class="p-4 border-b border-slate-100 bg-slate-50/50">
+            <div class="flex bg-slate-200 p-1 rounded-lg mb-3">
+                <button id="btnPeriodFirst" onclick="setPeriod('first')" class="flex-1 py-1.5 text-xs font-bold rounded-md bg-white text-indigo-700 shadow-sm transition-all">상반기</button>
+                <button id="btnPeriodSecond" onclick="setPeriod('second')" class="flex-1 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-700 transition-all">하반기</button>
             </div>
-
-            <!-- 실시간 개인 정보 스탬프용 데이터 입력창 (웹앱 내부 보존용) -->
-            <div class="flex flex-wrap items-center gap-3">
-                <div class="bg-blue-950/50 px-3 py-1.5 rounded border border-blue-700 text-xs flex items-center gap-3">
-                    <div>
-                        <span class="text-blue-300 block">학교명</span>
-                        <input type="text" id="schoolName" value="하주초등학교" readonly
-                            class="bg-transparent font-semibold focus:outline-none w-24 text-white">
-                    </div>
-                    <div class="border-l border-blue-700 h-6"></div>
-                    <div>
-                        <span class="text-blue-300 block">점검자명 (실명 기재)</span>
-                        <input type="text" id="inspectorName" placeholder="작성자 성명"
-                            class="bg-transparent font-semibold focus:outline-none w-24 text-white placeholder-blue-300 border-b border-blue-500 focus:border-white">
-                    </div>
-                    <div class="border-l border-blue-700 h-6"></div>
-                    <div>
-                        <span class="text-blue-300 block">점검일자</span>
-                        <input type="date" id="inspectionDate"
-                            class="bg-transparent font-semibold focus:outline-none w-28 text-white">
-                    </div>
-                </div>
+            <div class="flex bg-slate-200 p-1 rounded-lg">
+                <button id="btnAcademic" onclick="setSector('academic')" class="flex-1 py-1.5 text-xs font-bold rounded-md bg-white text-indigo-700 shadow-sm transition-all">학사분야</button>
+                <button id="btnFinance" onclick="setSector('finance')" class="flex-1 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-700 transition-all">회계분야</button>
             </div>
         </div>
-    </header>
-
-    <main class="flex-1 max-w-[1600px] mx-auto w-full px-4 py-6 sm:px-6 lg:px-8 flex flex-col gap-6 no-print">
-        <!-- 실시간 자동저장 상태바 알림 배너 -->
-        <div id="statusAlert"
-            class="bg-indigo-50 border-l-4 border-indigo-500 p-3 rounded text-xs text-indigo-900 flex justify-between items-center transition-all duration-300">
-            <div class="flex items-center gap-2">
-                <i class="fa-solid fa-cloud-arrow-up text-indigo-600 text-sm animate-pulse"></i>
-                <span>이 자가진단표는 구글 스프레드시트와 연동되어 <strong>체크 즉시 실시간으로 자동 저장</strong>됩니다.</span>
+        
+        <!-- Search -->
+        <div class="px-4 py-3 border-b border-slate-100">
+            <div class="relative">
+                <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                <input type="text" id="searchTerm" placeholder="카테고리 검색..." class="w-full bg-slate-100 border-none rounded-lg pl-8 pr-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500 transition-all outline-none" onkeyup="renderCategoryMenu()">
             </div>
-            <span id="syncIndicator"
-                class="inline-flex items-center gap-1.5 bg-indigo-100 text-indigo-800 font-bold px-2.5 py-1 rounded-md">
-                <i class="fa-solid fa-rotate animate-spin text-[10px]"></i> 데이터 로드 중...
-            </span>
         </div>
+        
+        <!-- Category Menu -->
+        <div class="flex-1 overflow-y-auto p-3" id="categoryContainer">
+            <!-- Categories will be injected here -->
+        </div>
+        
+        <div class="p-3 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 font-medium flex justify-between">
+            <span>총 카테고리</span>
+            <span id="catTotal" class="font-bold text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-full">0</span>
+        </div>
+    </aside>
 
-        <!-- 대시보드 요약 정보 카드 -->
-        <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
-                <div>
-                    <span class="text-xs text-slate-500 font-medium block">전체 진행률</span>
-                    <span class="text-2xl font-bold text-slate-800 mt-1" id="progRate">0%</span>
-                    <span class="text-xs text-slate-400 block mt-1" id="progRatio">0 / 0 문항</span>
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-screen overflow-hidden bg-slate-50 relative">
+        <!-- Top Header -->
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 z-10 no-print shadow-sm">
+            <div class="flex items-center gap-6">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">학교명</span>
+                    <input type="text" id="schoolName" class="border-b border-slate-300 focus:border-indigo-600 outline-none text-sm font-bold text-slate-800 w-32 pb-0.5 bg-transparent transition-colors" placeholder="학교명 입력">
                 </div>
-                <div class="w-14 h-14 rounded-full border-4 border-slate-100 flex items-center justify-center relative">
-                    <div class="absolute inset-0 rounded-full border-4 border-blue-600 transition-all duration-300"
-                        id="progCircle" style="clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);"></div>
-                    <i class="fa-solid fa-tasks text-lg text-slate-400"></i>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">점검자</span>
+                    <input type="text" id="inspectorName" class="border-b border-slate-300 focus:border-indigo-600 outline-none text-sm font-bold text-slate-800 w-24 pb-0.5 bg-transparent transition-colors" placeholder="이름 입력">
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">점검일자</span>
+                    <input type="date" id="inspectionDate" class="border-b border-slate-300 focus:border-indigo-600 outline-none text-sm font-bold text-slate-800 w-36 pb-0.5 bg-transparent transition-colors cursor-pointer">
                 </div>
             </div>
-
-            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
-                <div>
-                    <span class="text-xs text-slate-500 font-medium block">이행 (○)</span>
-                    <span class="text-2xl font-bold text-green-600 mt-1" id="cntOk">0건</span>
-                    <span class="text-xs text-slate-400 block mt-1">완료 (조치계획 잠김)</span>
+            
+            <div class="flex items-center gap-4">
+                <div id="syncIndicator" class="text-xs font-medium text-slate-400 flex items-center gap-1.5 px-3 py-1 bg-slate-100 rounded-full">
+                    <i class="fa-solid fa-cloud"></i> 저장됨
                 </div>
-                <div class="w-12 h-12 rounded-lg bg-green-50 flex items-center justify-center text-green-600">
-                    <i class="fa-solid fa-circle-check text-xl"></i>
-                </div>
-            </div>
-
-            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
-                <div>
-                    <span class="text-xs text-slate-500 font-medium block">미흡 (△)</span>
-                    <span class="text-2xl font-bold text-amber-500 mt-1" id="cntWarning">0건</span>
-                    <span class="text-xs text-slate-400 block mt-1">조치계획 작성 필수</span>
-                </div>
-                <div class="w-12 h-12 rounded-lg bg-amber-50 flex items-center justify-center text-amber-500">
-                    <i class="fa-solid fa-circle-minus text-xl"></i>
-                </div>
-            </div>
-
-            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
-                <div>
-                    <span class="text-xs text-slate-500 font-medium block">미이행 (×)</span>
-                    <span class="text-2xl font-bold text-red-500 mt-1" id="cntAlert">0건</span>
-                    <span class="text-xs text-slate-400 block mt-1">즉시조치 및 입력 필수</span>
-                </div>
-                <div class="w-12 h-12 rounded-lg bg-red-50 flex items-center justify-center text-red-500">
-                    <i class="fa-solid fa-circle-xmark text-xl"></i>
-                </div>
-            </div>
-        </section>
-
-        <!-- 분야 스위치 및 액션 툴바 -->
-        <div
-            class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <!-- 시기 및 분야 토글 -->
-            <div class="flex flex-wrap items-center gap-2">
-                <div class="inline-flex p-1 bg-slate-100 rounded-lg shrink-0">
-                    <button id="btnPeriodFirst" onclick="switchPeriod('first')"
-                        class="px-4 py-2 rounded-md font-semibold text-sm transition-all duration-200 bg-white text-indigo-900 shadow">
-                        상반기
-                    </button>
-                    <button id="btnPeriodSecond" onclick="switchPeriod('second')"
-                        class="px-4 py-2 rounded-md font-semibold text-sm transition-all duration-200 text-slate-600 hover:text-slate-900">
-                        하반기
-                    </button>
-                </div>
-                <div class="inline-flex p-1 bg-slate-100 rounded-lg shrink-0">
-                    <button id="btnAcademic" onclick="switchSector('academic')"
-                        class="px-5 py-2 rounded-md font-semibold text-sm transition-all duration-200 bg-white text-blue-900 shadow">
-                        <i class="fa-solid fa-graduation-cap mr-1.5"></i>학사분야 점검
-                    </button>
-                    <button id="btnFinance" onclick="switchSector('finance')"
-                        class="px-5 py-2 rounded-md font-semibold text-sm transition-all duration-200 text-slate-600 hover:text-slate-900">
-                        <i class="fa-solid fa-sack-dollar mr-1.5"></i>회계분야 점검
-                    </button>
-                </div>
-            </div>
-
-            <!-- 정갈한 서식 기반 인쇄 및 캐시 버튼 -->
-            <div class="flex items-center gap-3">
-                <button onclick="restoreLocalCache()" id="btnRestoreCache" style="display: none;"
-                    class="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-bold transition-all shadow-md flex items-center gap-2">
-                    <i class="fa-solid fa-clock-rotate-left"></i>임시저장 복구
+                <button id="btnRestoreCache" onclick="restoreFromCache()" class="text-xs font-bold bg-amber-100 text-amber-700 px-3 py-1.5 rounded-lg hover:bg-amber-200 transition-colors hidden">
+                    <i class="fa-solid fa-clock-rotate-left mr-1"></i> 임시저장 복구
                 </button>
+                <button onclick="printReport()" class="text-xs font-bold bg-white border border-slate-300 text-slate-700 px-4 py-1.5 rounded-lg hover:bg-slate-50 hover:text-indigo-600 transition-colors shadow-sm">
+                    <i class="fa-solid fa-print mr-1"></i> 출력
+                </button>
+                <button onclick="downloadHWPX()" class="text-xs font-bold bg-indigo-600 text-white px-4 py-1.5 rounded-lg hover:bg-indigo-700 shadow-md transition-colors flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-word"></i> HWPX 다운로드
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <div class="flex-1 overflow-y-auto p-8 relative no-print">
+            <!-- Dashboard Widget -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8 flex justify-between items-center bg-gradient-to-br from-white to-slate-50">
+                <div>
+                    <h2 class="text-2xl font-extrabold text-slate-800 flex items-center gap-3">
+                        <span id="activeCatId" class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-lg text-lg font-black tracking-tight border border-indigo-200 shadow-sm"></span>
+                        <span id="activeCatTitle"></span>
+                    </h2>
+                    <p id="catProgressText" class="text-slate-500 text-sm mt-2 font-medium flex items-center gap-2">
+                        <i class="fa-solid fa-chart-pie text-slate-400"></i> 진행 현황 로딩중...
+                    </p>
+                </div>
                 
-                <div class="relative group">
-                    <button onclick="downloadHWPX()" class="cursor-pointer px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-bold transition-all shadow-md flex items-center gap-2">
-                        <i class="fa-solid fa-file-word"></i>HWPX 자동 다운로드
-                        <i id="hwpxLoading" class="fa-solid fa-spinner fa-spin ml-1" style="display:none;"></i>
-                    </button>
-                </div>
-<button onclick="window.print()"
-                    class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold transition-all shadow-md flex items-center gap-2">
-                    <i class="fa-solid fa-print"></i>A4 격자 표 인쇄 / PDF 저장
-                </button>
-            </div>
-        </div>
-
-        <!-- 좌우 2컬럼 레이아웃 -->
-        <div class="flex flex-col lg:flex-row gap-6">
-
-            <!-- 좌측 카테고리 네비게이터 -->
-            <aside class="w-full lg:w-80 flex-shrink-0 flex flex-col gap-4">
-                <!-- 필터 도구 -->
-                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                    <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2.5">검색 및 필터</h3>
-                    <div class="flex flex-col gap-2">
-                        <!-- 검색어 -->
-                        <div class="relative">
-                            <input type="text" id="searchTerm" oninput="applyFilters()" placeholder="진단 내용 검색..."
-                                class="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <i class="fa-solid fa-search absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
+                <div class="flex items-center gap-8">
+                    <!-- Stats Blocks -->
+                    <div class="flex gap-4">
+                        <div class="text-center px-4 border-r border-slate-200">
+                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">이행</div>
+                            <div id="cntOk" class="text-xl font-black text-emerald-600">0</div>
                         </div>
-                        <!-- 학교 대상 범위 필터 -->
-                        
-                        <!-- 미흡항목만 필터 -->
-                        <label class="flex items-center gap-2 mt-1 cursor-pointer">
-                            <input type="checkbox" id="chkOnlyWarning" onchange="applyFilters()"
-                                class="rounded text-blue-600 focus:ring-blue-500 w-3.5 h-3.5">
-                            <span class="text-xs text-slate-600 select-none">미흡(△) 및 미이행(×)만 보기</span>
-                        </label>
+                        <div class="text-center px-4 border-r border-slate-200">
+                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">미흡</div>
+                            <div id="cntWarning" class="text-xl font-black text-amber-500">0</div>
+                        </div>
+                        <div class="text-center px-4">
+                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">미이행</div>
+                            <div id="cntAlert" class="text-xl font-black text-rose-500">0</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Progress Circle -->
+                    <div class="relative w-16 h-16 flex items-center justify-center">
+                        <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                            <path class="text-slate-100" stroke-width="4" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            <path id="progCircle" class="text-indigo-600 transition-all duration-1000 ease-out" stroke-width="4" stroke-dasharray="0, 100" stroke="currentColor" fill="none" stroke-linecap="round" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        </svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                            <span id="progRate" class="text-sm font-black text-slate-800 leading-none">0%</span>
+                            <span id="progRatio" class="text-[9px] font-bold text-slate-400 mt-0.5">0/0</span>
+                        </div>
                     </div>
                 </div>
-
-                <!-- 세부 카테고리 목록 -->
-                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex-1">
-                    <div class="flex justify-between items-center mb-3">
-                        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider">세부 분야</h3>
-                        <span class="text-[10px] bg-slate-100 px-2 py-0.5 rounded-full text-slate-500 font-bold"
-                            id="catTotal">0개 구역</span>
-                    </div>
-                    <div id="categoryContainer" class="flex flex-col gap-1 max-h-[500px] overflow-y-auto pr-1">
-                        <!-- JS 동적 주입 -->
-                    </div>
+            </div>
+            
+            <!-- Controls -->
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center gap-2 text-sm font-semibold text-slate-600">
+                    <i class="fa-solid fa-list-check text-indigo-500"></i> 점검 문항
                 </div>
-            </aside>
+                <label class="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer hover:text-indigo-600 transition-colors bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm">
+                    <input type="checkbox" id="chkOnlyWarning" class="rounded text-indigo-600 focus:ring-indigo-500" onchange="loadActiveCategoryItems()">
+                    미흡/미이행 문항만 보기
+                </label>
+            </div>
 
-            <!-- 우측 문항 입력 격자 테이블 -->
-            <section class="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-                <div
-                    class="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center flex-wrap gap-2">
-                    <div class="flex items-center gap-2">
-                        <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-1 rounded-md"
-                            id="activeCatId">1-1</span>
-                        <h2 class="text-base font-bold text-slate-800" id="activeCatTitle">공문서 관리</h2>
-                    </div>
-                    <span class="text-xs font-medium text-slate-500" id="catProgressText">진행률: 0/0 (0%)</span>
-                </div>
-
-                <div class="overflow-x-auto flex-1">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr
-                                class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                                <th class="py-3 px-4 w-12 text-center">번호</th>
-                                <th class="py-3 px-4">감사 자가진단 및 점검 내용</th>
-                                <th class="py-3 px-4 w-48 text-center">점검결과 (○, △, ×)</th>
-                                <th class="py-3 px-4 w-64">미흡/미이행 내용 및 조치사항</th>
-                                <th class="py-3 px-4 w-20 text-center">점검대상</th>
-                            </tr>
-                        </thead>
-                        <tbody id="checklistTableBody" class="divide-y divide-slate-100 text-sm">
-                            <!-- JS 동적 생성 -->
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
+            <!-- Table -->
+            <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-slate-50 border-b border-slate-200">
+                        <tr>
+                            <th class="p-3 text-xs font-bold text-slate-500 uppercase w-12 text-center">No</th>
+                            <th class="p-3 text-xs font-bold text-slate-500 uppercase">점검 내용</th>
+                            <th class="p-3 text-xs font-bold text-slate-500 uppercase w-48 text-center">결과 판정</th>
+                            <th class="p-3 text-xs font-bold text-slate-500 uppercase w-72">미흡내용 및 조치계획</th>
+                            <th class="p-3 text-xs font-bold text-slate-500 uppercase w-20 text-center">적용대상</th>
+                        </tr>
+                    </thead>
+                    <tbody id="checklistTableBody" class="divide-y divide-slate-100">
+                        <!-- Items will be injected here -->
+                    </tbody>
+                </table>
+            </div>
         </div>
     </main>
 
-    <!-- 인쇄 전용 출력용 영역 (A4 규격, 날인 서명란 포함) -->
-    <div class="hidden print-area px-8 py-10" id="printSection">
-        <div class="text-center mb-6">
-            <h1 class="text-2xl font-bold border-b-2 border-double border-black pb-2 mb-2">
-                자율적 내부통제 운영 활성화를 위한 자가진단 자율점검표
-            </h1>
-            <div class="flex justify-between text-sm text-slate-700 mt-3 font-semibold">
-                <span id="printSchoolName">점검기관: 하주초등학교</span>
-                <span>자율적 내부통제 자율 자가진단표</span>
-            </div>
-        </div>
-
-        <div id="printTableContainer">
-            <!-- 동적 생성 테이블들이 여기에 삽입됩니다 -->
-        </div>
-
-        <!-- 인쇄용 서명 섹션 -->
-        <div class="mt-12 text-right text-sm font-semibold">
-            <p class="mb-2">위 점검 내용 및 미흡 사항에 대한 사후 이행 계획을 성실히 수행할 것을 확인합니다.</p>
-            <p class="mt-8">2026 년 &nbsp;&nbsp;&nbsp;&nbsp; 월 &nbsp;&nbsp;&nbsp;&nbsp; 일</p>
-            <p class="mt-4">하주초등학교 자율점검 책임관 :
-                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (서명)
-            </p>
+    <!-- HWPX Loading Overlay -->
+    <div id="hwpxLoading" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex-col items-center justify-center">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl flex flex-col items-center max-w-sm w-full mx-4 border border-slate-100">
+            <div class="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+            <h3 class="text-lg font-bold text-slate-800 mb-1">HWPX 생성 중...</h3>
+            <p class="text-sm text-slate-500 text-center font-medium">데이터를 분석하여 보고서를 구성하고 있습니다.<br>잠시만 기다려주세요.</p>
         </div>
     </div>
 
-    <footer class="bg-slate-100 border-t border-slate-200 py-6 mt-12 text-center text-xs text-slate-400 no-print">
-        <p>© 2026 자율적 내부통제 자가진단 도구. 하주초등학교 학사·회계 관리 자율점검시스템.</p>
-        <p class="mt-1 text-[10px]">본 시스템은 경상북도교육청 자율 감사 지침 및 자가진단표 문항을 기반으로 구현되었습니다.</p>
-    </footer>
+    <!-- Print Container (Hidden) -->
+    <div class="hidden print-only p-8 max-w-5xl mx-auto bg-white">
+        <div class="text-center mb-8 border-b-2 border-slate-800 pb-4">
+            <h1 class="text-3xl font-black text-slate-900 mb-2">자가진단 체크리스트 결과 보고서</h1>
+            <p class="text-lg font-bold text-slate-600" id="printSchoolName"></p>
+        </div>
+        <div id="printTableContainer"></div>
+    </div>
 
-    <!-- 스크립트 로직 제어 -->
+    <!-- DB & Logic -->
     <script>
-        // 1. 전체 자가진단 데이터베이스 (학사분야 & 회계분야)
         const checklistDatabase = {
             academic: {
-                title: "학사분야 자가진단표",
+                title: "학사분야 자가진단",
                 categories: [
                     {
                         id: "1-1",
@@ -417,14 +301,14 @@
                         id: "2-2-1",
                         title: "초등 출결관리",
                         items: [
-                            { no: "1", content: "전출일과 전입일이 동일할 경우 전입일 만 수업일수로 산정", scope: "초" },
+                            { no: "1", content: "전출일과 전입일이 동일할 경우 전입일만 수업일수로 산정", scope: "초" },
                             { no: "2", content: "병원학교 수업참여 또는 화상강의 이수는 출석으로 인정", scope: "초" },
-                            { no: "3", content: "교환‧교류학습 및 교외체험학습으로 인한 출결처리 적성 여부", scope: "초" },
-                            { no: "4", content: "‘특기사항’ 란 장기결석, 기타 결석의 사유 등 입력 및 입력 불가 내용의 입력 여부", scope: "초" },
-                            { no: "5", content: "‘특기사항’ 란 1회의 결석‧지각‧조퇴‧결과도 없는 경우 ‘개근’ 입력 여부", scope: "초" },
-                            { no: "6", content: "졸업 또는 진급을 위한 출석일수 부족학생 유급처리 여부", scope: "초" },
+                            { no: "3", content: "교환‧교류학습 및 교외체험학습으로 인한 출결처리 적정성 여부", scope: "초" },
+                            { no: "4", content: "'특기사항' 란에는 장기결석, 기타 결석의 사유 등을 입력과 입력 불가한 내용의 입력 여부", scope: "초" },
+                            { no: "5", content: "'특기사항' 란에는 1회의 결석·지각·조퇴·결과도 없는 경우 '개근' 입력", scope: "초" },
+                            { no: "6", content: "조업 또는 진급을 위한 출석일수 부족학생은 유급처리", scope: "초" },
                             { no: "7", content: "장기 결석자에 대한 출석 독려 조치 시행", scope: "초" },
-                            { no: "8", content: "천재지변, 법정전염병 등(학교장 인정 비법정 감염병 포함)으로 출석하지 못한 경우 출석 처리 여부", scope: "초" }
+                            { no: "8", content: "천재지변, 법정전염병 등으로 출석하지 못한 경우 출석으로 처리함", scope: "초" }
                         ]
                     },
                     {
@@ -454,10 +338,10 @@
                         title: "영재교육 및 조기진급·졸업",
                         items: [
                             { no: "1", content: "영재학급 운영 방법의 적절성", scope: "각급학교" },
-                            { no: "2", content: "영재교육 대상자를 관찰·평가한 자료의 학교생활기록부 준한 작성 및 관리 여부", scope: "각급학교" },
+                            { no: "2", content: "영재교육 대상자를 관찰·평가한 자료는 학교생활기록부에 준하여 자료를 작성 및 관리하는지 여부", scope: "각급학교" },
                             { no: "3", content: "영재교육대상자선정심사위원회 구성 및 운영 여부", scope: "각급학교" },
                             { no: "4", content: "영재학급 강사 관리의 적절성", scope: "각급학교" },
-                            { no: "5", content: "영재학급 운영 관련 강사수당, 선정심사위원회수당, 학생선발 수당 등 예산범위 내 지급 여부", scope: "각급학교" },
+                            { no: "5", content: "영재학급 운영 관련 강사수당, 선정심사위원회수당, 학생 선발 수당 등의 예산범위 내 지급 여부", scope: "각급학교" },
                             { no: "6", content: "법령에 의거한 조기진급 및 조기졸업 내부계획 수립·운영 여부", scope: "각급학교" },
                             { no: "7", content: "교과목별 조기 이수 인정을 위한 조기진급·졸업·진학평가위원회 구성·운영 여부", scope: "각급학교" }
                         ]
@@ -484,11 +368,11 @@
                             { no: "1", content: "학업성적관리규정 운영의 적법성 여부", scope: "초" },
                             { no: "2", content: "수행평가, 지필평가 실시 전 학업성적관리위원회 심의 및 회의록 작성 여부", scope: "초" },
                             { no: "3", content: "문제출제의 오류 등 확인", scope: "초" },
-                            { no: "4", content: "학교 교육과정의 범위와 수준 내에서 문항 출제 여부 확인", scope: "초" },
+                            { no: "4", content: "학교 교육과정의 범위와 수준 내에서 문항을 출제하였는지 확인", scope: "초" },
                             { no: "5", content: "서술형·논술형 평가관련 내실화 여부", scope: "초" },
-                            { no: "6", content: "성취기준 및 성취수준(평가기준)에 따른 채점의 적정성", scope: "초" },
-                            { no: "7", content: "수행평가 계획 사전예고 및 수행평가 절차의 준수 여부", scope: "초" },
-                            { no: "8", content: "수행평가 후 학생의 이의신청 기회 부여 및 적절한 조치 여부", scope: "초" },
+                            { no: "6", content: "성취기준 및 성취수준(평가기준)에 따른 채점의 적정성 여부", scope: "초" },
+                            { no: "7", content: "수행평가 계획 사전예고 및 수행평가 절차의 적정성 여부", scope: "초" },
+                            { no: "8", content: "수행평가 후 학생의 이의신청 기회 부여 및 처리의 적정성 여부", scope: "초" },
                             { no: "9", content: "평가결과 정답률, 내용, 타당도 등의 분석·환류 여부", scope: "초" }
                         ]
                     },
@@ -496,16 +380,16 @@
                         id: "4-1",
                         title: "방과후학교 운영",
                         items: [
-                            { no: "1", content: "방과후학교 운영 계획 수립의 적정 여부", scope: "각급학교" },
-                            { no: "2", content: "방과후학교 강사 채용 관리의 적정 여부", scope: "각급학교" },
-                            { no: "3", content: "자유수강권 운영 적정 여부", scope: "각급학교" },
-                            { no: "4", content: "방과후학교 청렴도 향상 방안 수립 여부", scope: "각급학교" },
-                            { no: "5", content: "방과후학교 위탁 운영의 적정 여부", scope: "각급학교" },
-                            { no: "6", content: "방과후학교 회계관리 적정 여부", scope: "각급학교" },
-                            { no: "7", content: "방과후학교 프로그램 위탁운영 적정 여부", scope: "각급학교" },
-                            { no: "8", content: "야간 및 휴일 자율학습 참여학생 만족도 제고 노력", scope: "각급학교" },
-                            { no: "9", content: "방과후학교 및 자율학습 적정 운영 여부", scope: "각급학교" },
-                            { no: "10", content: "방과후학교 운영 평가의 적정 여부", scope: "각급학교" }
+                            { no: "1", content: "방과후학교 운영 계획 수립의 부적정", scope: "각급학교" },
+                            { no: "2", content: "방과후학교 강사 채용 관리의 부적정", scope: "각급학교" },
+                            { no: "3", content: "자유수강권 운영 부적정", scope: "각급학교" },
+                            { no: "4", content: "방과후학교 청렴도 향상 방안 수립", scope: "각급학교" },
+                            { no: "5", content: "방과후학교 위탁 운영의 부적정", scope: "각급학교" },
+                            { no: "6", content: "방과후학교 회계관리 부적정", scope: "각급학교" },
+                            { no: "7", content: "방과후학교 프로그램 위탁운영 부적정", scope: "각급학교" },
+                            { no: "8", content: "야간 및 휴일 자율학습 참여학생 만족도 제고", scope: "각급학교" },
+                            { no: "9", content: "방과후학교 및 자율학습 적정 운영", scope: "각급학교" },
+                            { no: "10", content: "방과후학교 운영 평가의 부적정", scope: "각급학교" }
                         ]
                     },
                     {
@@ -534,13 +418,13 @@
                         items: [
                             { no: "1", content: "가해학생 조치사항 관리대장 비치 여부", scope: "각급학교" },
                             { no: "2", content: "학교폭력 조치사항 관리 기록 여부", scope: "각급학교" },
-                            { no: "3", content: "(2024학년도 1학년) 조치사항 1, 2, 3호 졸업과 동시 삭제 여부", scope: "각급학교" },
-                            { no: "4", content: "(2024학년도 1학년) 조치사항 4, 5, 6, 7호 졸업 직전 삭제 시 심의 절차 준수 여부", scope: "각급학교" },
-                            { no: "5", content: "(2024학년도 초2~6, 중고2~3) 조치사항 8호, 9호 인‧학적 특기사항 기록 여부", scope: "각급학교" },
-                            { no: "6", content: "(2024학년도 초2~6, 중고2~3) 조치사항 4호, 5호, 6호 출결 특기사항 기록 여부", scope: "각급학교" },
-                            { no: "7", content: "(2024학년도 초2~6, 중고2~3) 조치사항 1호, 2호, 3호, 7호 행동특성 및 종합의견 특기사항 기록 여부", scope: "각급학교" },
-                            { no: "8", content: "(2024학년도 초2~6, 중고2~3) 제17조 1항 1, 2, 3(7)호 졸업과 동시 삭제 여부", scope: "각급학교" },
-                            { no: "9", content: "(2024학년도 초2~6, 중고2~3) 4, 5, 6, 7(8)호 졸업 직전 삭제 시 심의 절차 준수 여부", scope: "각급학교" }
+                            { no: "3", content: "1, 2, 3호 졸업과 동시 삭제", scope: "각급학교" },
+                            { no: "4", content: "4, 5, 6, 7호 졸업 직전 삭제 시 심의 절차 준수 여부", scope: "각급학교" },
+                            { no: "5", content: "조치사항 8호, 9호 인‧학적 특기사항 기록 여부", scope: "각급학교" },
+                            { no: "6", content: "조치사항 4호, 5호, 6호 출결 특기사항 기록 여부", scope: "각급학교" },
+                            { no: "7", content: "조치사항 1호, 2호, 3호, 7호 행동특성 및 종합의견 특기사항 기록 여부", scope: "각급학교" },
+                            { no: "8", content: "제17조 1항 1, 2, 3(7)호 졸업과 동시 삭제 여부", scope: "각급학교" },
+                            { no: "9", content: "4, 5, 6, 7(8)호 졸업 직전 삭제 시 심의 절차 준수 여부", scope: "각급학교" }
                         ]
                     },
                     {
@@ -566,53 +450,53 @@
                         id: "5-6",
                         title: "초ㆍ중ㆍ고 학업중단학생 예방 및 학업중단숙려제 운영",
                         items: [
-                            { no: "1", content: "학업중단숙려제 계획 수립 여부(3월)", scope: "초·중" },
-                            { no: "2", content: "학생이 자퇴원을 제출하거나 학업중단의 위기 징후를 보일 경우, New_Start협의회 개최 여부", scope: "초·중" },
-                            { no: "3", content: "학업중단위기학생 발생 시 학업중단숙려제 매뉴얼 준수 여부", scope: "초·중" },
-                            { no: "4", content: "학업중단위기학생 학교적응력 향상지원 노력 여부(학교내 대안교실 운영, 대안교육 위탁기관 연계 지도)", scope: "초·중" },
-                            { no: "5", content: "학업 중단 학생 정보 연계 및 학교 밖 청소년 지원 프로그램 안내 여부", scope: "초·중" }
+                            { no: "1", content: "학업중단숙려제 계획 수립 여부(3월)", scope: "각급학교" },
+                            { no: "2", content: "학생이 자퇴원을 제출하거나 학업중단의 위기 징후를 보일 경우, New_Start협의회 개최 여부", scope: "각급학교" },
+                            { no: "3", content: "학업중단위기학생 발생 시 학업중단숙려제 매뉴얼 준수 여부", scope: "각급학교" },
+                            { no: "4", content: "학업중단위기학생 학교적응력 향상지원 노력 여부", scope: "각급학교" },
+                            { no: "5", content: "학업 중단 학생 정보 연계 및 학교 밖 청소년 지원 프로그램 안내 여부", scope: "각급학교" }
                         ]
                     },
                     {
                         id: "5-7",
                         title: "생명존중(마음건강)교육",
                         items: [
-                            { no: "1", content: "학생대상 교육과정연계 생명존중 및 자살 예방교육 연간 6시간 이상 실시 여부 (자살예방교육 연 1회 이상 실시)", scope: "각급학교" },
+                            { no: "1", content: "학생대상 교육과정연계 생명존중 및 자살 예방교육 연간 6시간 이상 실시 여부", scope: "각급학교" },
                             { no: "2", content: "학기 초(3월, 9월) 생명존중 마음건강 교육 운영 여부", scope: "각급학교" },
-                            { no: "3", content: "학생정서행동특성검사를 통한 자살징후 조기발견 노력 및 대상 학생(관심군)에 대한 대응 및 조치의 적정성 여부", scope: "각급학교" },
-                            { no: "4", content: "전교원의 학생자살예방관련 연수 의무적 실시 여부(연 1회 이상)", scope: "각급학교" },
-                            { no: "5", content: "《자살사안 발생 학교》 위기관리위원회 구성 및 개최 여부", scope: "각급학교" },
-                            { no: "6", content: "《자살사안 발생 학교》 보고 절차 준수 여부", scope: "각급학교" },
-                            { no: "7", content: "《자살사안 발생 학교》 사후 대응 노력 여부(Wee센터, 전문기관 학교방문 '생명사랑센터' 위기개입 지원 요청 또는 실적 유무, 검사·치료비 지원 안내 유무)", scope: "각급학교" }
+                            { no: "3", content: "학생정서행동특성검사를 통한 자살징후 조기 발견 노력 및 대상 학생(관심군)에 대한 대응 및 조치의 적정성 여부", scope: "각급학교" },
+                            { no: "4", content: "전교원의 학생자살예방관련 연수 의무적 실시 여부 (연 1회 이상)", scope: "각급학교" },
+                            { no: "5", content: "위기관리위원회 구성 및 개최 여부", scope: "자살사안 발생 학교" },
+                            { no: "6", content: "보고 절차 준수 여부", scope: "자살사안 발생 학교" },
+                            { no: "7", content: "사후 대응 노력 여부(Wee센터, 전문기관 학교 방문, 위기개입 지원 요청, 검사·치료비 지원 안내)", scope: "자살사안 발생 학교" }
                         ]
                     },
                     {
                         id: "5-8",
                         title: "학교안전교육",
                         items: [
-                            { no: "1", content: "안전교육시간 확보 및 실시 여부 (연간 51시간-교과연계 및 창의적 체험활동 활용)", scope: "각급학교" },
+                            { no: "1", content: "안전교육시간 확보 및 실시여부 (연간 51시간-교과연계 및 창의적 체험활동 활용)", scope: "각급학교" },
                             { no: "2", content: "초등학생의 경우 체험중심의 교통안전교육 4시간 이상 실시 여부", scope: "각급학교" },
                             { no: "3", content: "자전거, PM(개인형 이동장치), 오토바이 등 교통안전교육 실시 여부", scope: "각급학교" },
                             { no: "4", content: "안전교육의 시간 및 횟수 준수 여부", scope: "각급학교" },
                             { no: "5", content: "교직원대상 15시간 이상 안전교육 직무연수 이수 여부", scope: "각급학교" },
                             { no: "6", content: "교감급 이상을 학교 안전책임관으로 지정하여 학교 안전사고 예방 체제 구축 여부", scope: "각급학교" },
-                            { no: "7", content: "안전한 등하굣길 조성 여부 (스쿨존 안전지도 제작·배포, 등하교 시간대 선택적·집중적 안전 활동 전개)", scope: "각급학교" },
-                            { no: "8", content: "교직원의 심폐소생술 등 응급처치교육 실시 여부 (연간 4시간-실습 2시간 이상 포함 응급처치교육 의무화)", scope: "각급학교" }
+                            { no: "7", content: "안전한 등하굣길 조성 여부 (스쿨존 안전지도 제작·배포, 등하교 시간대 안전 활동 전개)", scope: "각급학교" },
+                            { no: "8", content: "교직원의 심폐소생술 등 응급처치교육 실시 여부 (연간 4시간-실습2시간이상포함)", scope: "각급학교" }
                         ]
                     },
                     {
                         id: "6-1",
                         title: "현장체험학습",
                         items: [
-                            { no: "1", content: "학부모 동의 및 학생 선호도 조사 실시 여부", scope: "각급학교" },
-                            { no: "2", content: "안전요원 배치계획 수립 여부 (성범죄 경력 및 아동학대 관련 범죄전력조회 포함)", scope: "각급학교" },
+                            { no: "1", content: "학부모 동의 및 학생 선호도 조사", scope: "각급학교" },
+                            { no: "2", content: "안전요원 배치계획 수립 여부 (성범죄 경력 및 아동학대 관련 범죄전력조회)", scope: "각급학교" },
                             { no: "3", content: "계약 전, 시행직전 사전 답사 실시 여부", scope: "각급학교" },
                             { no: "4", content: "교사 및 학생 대상 안전교육 실시 여부", scope: "각급학교" },
                             { no: "5", content: "수학여행·수련활동 활성화 위원회 구성·운영 여부", scope: "각급학교" },
-                            { no: "6", content: "현장체험학습의 시기, 장소, 만족도 조사 결과 등을 도교육청 “현장학습공개방”에 공개했는지 여부", scope: "각급학교" },
+                            { no: "6", content: "현장체험학습의 시기, 장소, 만족도 조사 결과 등을 도교육청 현장학습공개방에 공개했는지 여부", scope: "각급학교" },
                             { no: "7", content: "계약 관련 법규 준수 여부(청렴계약제 시행 여부 포함)", scope: "각급학교" },
-                            { no: "8", content: "사전답사를 학교자체 예산으로 진행했는지 여부", scope: "각급학교" },
-                            { no: "9", content: "학부모 부담경비의 학교회계 편입 집행 및 홈페이지 공개 여부", scope: "각급학교" },
+                            { no: "8", content: "사전답사의 학교자체 예산으로 진행 여부", scope: "각급학교" },
+                            { no: "9", content: "학부모 부담경비의 학교회계 편입 집행(홈페이지 공개)", scope: "각급학교" },
                             { no: "10", content: "숙박, 차량 계약 시 청렴각서 작성 및 청렴도 자가 진단 실시 여부", scope: "각급학교" }
                         ]
                     },
@@ -631,11 +515,11 @@
                         id: "7-1",
                         title: "장학금",
                         items: [
-                            { no: "1", content: "장학생 선발 규정의 합리적 제·개정 및 운영 여부", scope: "각급학교" },
-                            { no: "2", content: "장학생심사위원회 구성 및 운영의 적절성 (회의록 비치)", scope: "각급학교" },
-                            { no: "3", content: "장학생 수혜대상자 명부 작성 및 학교장 결재의 적정성 여부", scope: "각급학교" },
+                            { no: "1", content: "장학생 선발 규정의 합리적 제·개정 및 운영", scope: "각급학교" },
+                            { no: "2", content: "장학생심사위원회 구성 및 운영의 적절성(회의록 비치)", scope: "각급학교" },
+                            { no: "3", content: "장학생 수혜대상자 명부 작성 및 결재과정(학교장 결재)이 제대로 이루어졌는지 여부", scope: "각급학교" },
                             { no: "4", content: "장학금 지급대장 비치, 불합리한 수혜 및 중복 수혜 방지 여부", scope: "각급학교" },
-                            { no: "5", content: "발전기금회계를 통한 자금운용계획에 의한 집행 여부", scope: "각급학교" }
+                            { no: "5", content: "발전기금회계를 통한 자금운용계획에 의해 집행", scope: "각급학교" }
                         ]
                     },
                     {
@@ -643,8 +527,8 @@
                         title: "영어교육",
                         items: [
                             { no: "1", content: "재학 중 연 1회 이상 영어체험 프로그램 참여 여부", scope: "각급학교" },
-                            { no: "2", content: "원어민 주당 22시간 수업시수 확보 여부 (순회학교 추가)", scope: "각급학교" },
-                            { no: "3", content: "원어민+한국인 교사 협력수업(co-teaching) 실시 여부", scope: "각급학교" },
+                            { no: "2", content: "원어민 주당 22시간 수업시수 확보(순회학교 추가)", scope: "각급학교" },
+                            { no: "3", content: "원어민 +한국인 교사 협력수업(co-teaching) 실시 여부", scope: "각급학교" },
                             { no: "4", content: "학기별 1회 영어회화전문강사 수업 공개 및 컨설팅 여부", scope: "각급학교" },
                             { no: "5", content: "영어회화 전문강사 임용기간, 재계약(신규채용) 절차 준수 여부", scope: "각급학교" },
                             { no: "6", content: "영어회화전문강사 주당 수업시수 18시간 이상 확보 여부", scope: "각급학교" },
@@ -662,7 +546,7 @@
                             { no: "5", content: "과학실험 안전 매뉴얼 비치·활용 및 교육 여부", scope: "각급학교" },
                             { no: "6", content: "물질안전보건자료(MSDS) 비치 및 활용 여부", scope: "각급학교" },
                             { no: "7", content: "학교 화학 약품 안전관리 매뉴얼 비치 및 활용 여부", scope: "각급학교" },
-                            { no: "8", content: "교구선정 협의회를 거쳐 구입 신청 후 물품 검수 및 에듀파인 교구(기자재) 대장 등록 여부", scope: "각급학교" },
+                            { no: "8", content: "교구선정 협의회를 거쳐 구입 신청 후 물품에 대한 검수 후 에듀파인 교구(기자재) 대장 등록 여부", scope: "각급학교" },
                             { no: "9", content: "과학교구 기자재 및 실습재료 확보 적정성 여부", scope: "각급학교" },
                             { no: "10", content: "학교교육과정 운영 계획에 교구(기자재) 대체·보완 계획 수립 및 반영 여부", scope: "각급학교" }
                         ]
@@ -685,30 +569,30 @@
                             { no: "2", content: "대상에 따른 합숙훈련 방법의 적합성 여부", scope: "각급학교" },
                             { no: "3", content: "학생선수의 정규수업 의무 실시 여부", scope: "각급학교" },
                             { no: "4", content: "학생선수(성)폭력 근절 등 인권보호를 위해 학교체육소위원회 구성 및 운영 여부", scope: "각급학교" },
-                            { no: "5", content: "학생선수, 학교운동부지도자 인권교육과 (성)폭력근절 등 연 1회 이상 인권교육 실시 여부", scope: "각급학교" },
-                            { no: "6", content: "담임·체육·상담·보건교사를 활용한 학생선수 월 1회 이상 상담 및 상담일지 누가기록 여부", scope: "각급학교" },
+                            { no: "5", content: "학생선수, 학교운동부지도자 인권교육과 (성)폭력근절 등 연 1회 이상 인권교육 실시", scope: "각급학교" },
+                            { no: "6", content: "담임교사, 체육교사, 상담교사 또는 보건교사를 활용하여 학생선수의 월 1회 이상 상담 및 상담일지 누가기록 여부", scope: "각급학교" },
                             { no: "7", content: "학교운동부 운영 경비 등을 학교회계에 편입하여 지출하는지 여부", scope: "각급학교" },
                             { no: "8", content: "학교운동부 운영을 위한 발전기금 조성 및 운영 계획 수립 후 학교운영위원회 심의·의결 후 시행 여부", scope: "각급학교" },
-                            { no: "9", content: "학교운동부 운영에 관한 점검을 연 2회 이상 실시하여 청렴도 제고 노력을 하는지 여부", scope: "각급학교" },
-                            { no: "10", content: "학생선수의 휴게소(기숙사)는 필요시 소방서 등 합동 점검 등 연 4회 정기 점검 실시 여부", scope: "각급학교" }
+                            { no: "9", content: "학교운동부 운영에 관한 점검을 연 2회 이상 실시하여 학교운동부의 청렴도 제고를 위한 노력 여부", scope: "각급학교" },
+                            { no: "10", content: "학생선수의 휴게소(기숙사) 연 4회 정기 점검 실시 여부", scope: "각급학교" }
                         ]
                     },
                     {
                         id: "10-3",
                         title: "학교보건",
                         items: [
-                            { no: "1", content: "학생건강증진계획 수립 및 추진 여부", scope: "각급학교" },
+                            { no: "1", content: "학생건강증진계획수립 및 추진 여부", scope: "각급학교" },
                             { no: "2", content: "체계적인 보건교육 실시 여부 (최소 1개 학년 이상 연간 17차시 이상 실시)", scope: "각급학교" },
-                            { no: "3", content: "요보호학생 관리대장 기록 관리 여부", scope: "각급학교" },
-                            { no: "4", content: "보건실 시설·기구 확충 및 관리의 적정성 여부", scope: "각급학교" },
+                            { no: "3", content: "요보호학생 관리대장 기록 관리", scope: "각급학교" },
+                            { no: "4", content: "보건실 시설·기구 확충 및 관리의 적정성", scope: "각급학교" },
                             { no: "5", content: "학교보건일지 및 약품(약품 사용기간) 관리의 적정 여부", scope: "각급학교" },
-                            { no: "6", content: "보건(담당)교사 부재 시 업무대행자 지정 및 대비 체제 구축 여부", scope: "각급학교" },
-                            { no: "7", content: "학생 건강검사 및 별도검사 관련 결과관리, 유소견자 사후대책 관리 여부", scope: "각급학교" },
-                            { no: "8", content: "학교 내 감염병 예방관리 적정성 여부", scope: "각급학교" },
+                            { no: "6", content: "보건(담당)교사 부재 시 업무대행자 지정 및 대비 체제 구축", scope: "각급학교" },
+                            { no: "7", content: "학생 건강검사(신체의 발달 상황, 건강조사, 건강검진) 및 별도검사 관련 결과관리, 유소견자 사후대책 관리", scope: "각급학교" },
+                            { no: "8", content: "학교 내 감염병 예방관리 적정성", scope: "각급학교" },
                             { no: "9", content: "학생·교직원 심폐소생술 등 응급처치교육 실시 여부", scope: "각급학교" },
-                            { no: "10", content: "교육환경보호구역 실태점검계획 수립, 점검 및 관리, 알림표지판 설치정비 여부", scope: "각급학교" },
-                            { no: "11", content: "교사 내 공기 질 점검 및 사후관리 여부", scope: "각급학교" },
-                            { no: "12", content: "먹는 물 관리의 적정성 여부", scope: "각급학교" }
+                            { no: "10", content: "교육환경보호구역 실태점검계획 수립, 점검 및 관리, 알림표지판 설치정비", scope: "각급학교" },
+                            { no: "11", content: "교사 내 공기 질 점검 및 사후관리", scope: "각급학교" },
+                            { no: "12", content: "먹는 물 관리의 적정성", scope: "각급학교" }
                         ]
                     },
                     {
@@ -719,10 +603,10 @@
                             { no: "2", content: "학교기본운영비의 자료구입비 및 도서관 운영비 편성 여부", scope: "각급학교" },
                             { no: "3", content: "학교도서관운영위원회 구성을 통한 계획 수립 및 심의 여부", scope: "각급학교" },
                             { no: "4", content: "자료 구입 및 장서 폐기 적정 여부", scope: "각급학교" },
-                            { no: "5", content: "학교 교육과정 운영 계획에 학생들의 학교도서관 이용 상황, 독서교육계획 수립 및 시행 여부", scope: "각급학교" },
-                            { no: "6", content: "독서로와 연계하여 학생 독서 이력관리, 진로 및 진학지도 참고 자료로 활용하는지 여부 (중·고 해당)", scope: "중·고" },
-                            { no: "7", content: "창의적 체험활동 종합지원시스템과 연계한 독서활동 지도 자료 관리 여부 (중·고 해당)", scope: "중·고" },
-                            { no: "8", content: "학교도서관을 활용한 교과 융합·연계 독서 수업 운영 여부", scope: "각급학교" }
+                            { no: "5", content: "학교 교육과정 운영 계획에 학생들의 학교도서관 이용 상황, 독서교육계획 수립되어 있으며 시행되고 있는지 여부", scope: "각급학교" },
+                            { no: "6", content: "독서로와 연계하여 학생 독서 이력관리, 진로 및 진학지도 참고 자료로 활용하는지 여부", scope: "중·고" },
+                            { no: "7", content: "창의적 체험활동 종합지원시스템과 연계한 독서 활동 지도 자료 관리 여부", scope: "중·고" },
+                            { no: "8", content: "학교도서관을 활용한 교과 융합·연계 독서 수업 운영", scope: "각급학교" }
                         ]
                     },
                     {
@@ -731,13 +615,13 @@
                         items: [
                             { no: "1", content: "교육과정 편성 운영의 적정성 여부", scope: "각급학교" },
                             { no: "2", content: "학업성적관리규정에 장애학생 평가 조정 관련 규정 포함 여부", scope: "각급학교" },
-                            { no: "3", content: "진로 및 직업 교육 운영의 적정성 여부 (중·고 해당)", scope: "중·고" },
-                            { no: "4", content: "전공과 운영의 적정성 여부 (특수학교 해당)", scope: "특수" },
-                            { no: "5", content: "개별화교육지원팀 구성 여부 (매 학년 시작일부터 2주 이내)", scope: "각급학교" },
-                            { no: "6", content: "개별화교육계획 작성 여부 (매 학기 시작일부터 30일 이내)", scope: "각급학교" },
+                            { no: "3", content: "진로 및 직업 교육 운영의 적정성 여부", scope: "중·고" },
+                            { no: "4", content: "전공과 운영의 적정성 여부", scope: "특수학교" },
+                            { no: "5", content: "개별화교육지원팀 구성 (매 학년 시작일부터 2주 이내)", scope: "각급학교" },
+                            { no: "6", content: "개별화교육계획 작성 (매 학기 시작일부터 30일 이내)", scope: "각급학교" },
                             { no: "7", content: "개별화교육계획에 의한 평가 실시 및 평가 결과 보호자 통보 여부", scope: "각급학교" },
                             { no: "8", content: "특수교육대상자 선정 절차 준수 여부", scope: "각급학교" },
-                            { no: "9", content: "특수교육대상학생 치료지원비, 특기적성교육비 등의 지원 적정성 여부", scope: "각급학교" },
+                            { no: "9", content: "특수교육대상학생 치료지원비, 특기적성교육비 등의 지원 적정성", scope: "각급학교" },
                             { no: "10", content: "특수교육대상자 취학유예 및 면제, 재취학 절차 준수 여부", scope: "각급학교" }
                         ]
                     },
@@ -747,81 +631,86 @@
                         items: [
                             { no: "1", content: "인사자문위원회 설치·운영의 적정성 여부", scope: "각급학교" },
                             { no: "2", content: "인사자문위원회 회의록 작성 여부", scope: "각급학교" },
-                            { no: "3", content: "공무외국외자율연수 시 학교장 사전 승인(계획서 제출) 여부", scope: "각급학교" }
+                            { no: "3", content: "학교장 사전 승인(계획서 제출) 여부", scope: "각급학교" }
                         ]
                     },
                     {
                         id: "14-2",
                         title: "임용",
                         items: [
-                            { no: "1", content: "(계약제교원) 임용서류의 적정성 여부", scope: "각급학교" },
-                            { no: "2", content: "(계약제교원) 호봉획정의 적정성 여부", scope: "각급학교" },
-                            { no: "3", content: "(계약제교원) 임용방법 및 절차 준수 여부", scope: "각급학교" },
-                            { no: "4", content: "(계약제교원) 인사기록 관리의 적정성 여부", scope: "각급학교" },
-                            { no: "5", content: "(계약제교원) 기간제교원(3개월 이상 임용) 연수 이수 여부", scope: "각급학교" },
-                            { no: "6", content: "(계약제교원) 기간제교원(6개월 이상 임용) 근무실적 평가 여부", scope: "각급학교" },
-                            { no: "7", content: "(휴·복직) 휴직의 목적에 맞는 휴직 신청 및 허가 여부", scope: "각급학교" },
-                            { no: "8", content: "(휴·복직) 휴직자 복무관리 철저 여부", scope: "각급학교" },
-                            { no: "9", content: "(휴·복직) 휴·복직 관련 서류 구비 여부", scope: "각급학교" },
-                            { no: "10", content: "(휴·복직) 복직 시 호봉재획정, 임용 중 승급 불가 준수 여부", scope: "각급학교" }
+                            { no: "1", content: "임용서류의 적정성 여부", scope: "각급학교" },
+                            { no: "2", content: "호봉획정의 적정성 여부", scope: "각급학교" },
+                            { no: "3", content: "임용방법 및 절차 준수 여부", scope: "각급학교" },
+                            { no: "4", content: "인사기록 관리의 적정성 여부", scope: "각급학교" },
+                            { no: "5", content: "기간제교원(3개월 이상 임용) 연수 이수", scope: "각급학교" },
+                            { no: "6", content: "기간제교원(6개월 이상 임용) 근무실적 평가 여부", scope: "각급학교" },
+                            { no: "7", content: "휴직의 목적에 맞는 휴직 신청 및 허가", scope: "각급학교" },
+                            { no: "8", content: "휴직자 복무관리 철저", scope: "각급학교" },
+                            { no: "9", content: "휴·복직 관련 서류 구비", scope: "각급학교" },
+                            { no: "10", content: "복직 시 호봉재획정, 임용 중 승급 불가", scope: "각급학교" }
                         ]
                     },
                     {
                         id: "14-3",
                         title: "교원업적평가",
                         items: [
-                            { no: "1", content: "(근무성적평정) 단위학교 다면평가 절차 준수 여부", scope: "각급학교" },
-                            { no: "2", content: "(근무성적평정) 신분상 처분에 따른 감점 요인의 적용 여부", scope: "각급학교" },
-                            { no: "3", content: "(근무성적평정) 2개월 이상 근무하지 아니한 자 평정대상 제외 여부", scope: "각급학교" },
-                            { no: "4", content: "(성과상여금) 단위학교 다면평가 절차 준수 여부", scope: "각급학교" },
-                            { no: "5", content: "(성과상여금) 지급대상자 및 제외 대상자 선정 적정 여부", scope: "각급학교" }
+                            { no: "1", content: "단위학교 다면평가 절차 준수 여부", scope: "각급학교" },
+                            { no: "2", content: "신분상 처분에 따른 감점 요인의 적용 여부", scope: "각급학교" },
+                            { no: "3", content: "2개월 이상 근무하지 아니한 자 평정대상 제외 여부", scope: "각급학교" },
+                            { no: "4", content: "단위학교 다면평가 절차 준수 여부 (성과상여금)", scope: "각급학교" },
+                            { no: "5", content: "지급대상자 및 제외 대상자 선정 적정 여부", scope: "각급학교" }
                         ]
                     },
                     {
                         id: "14-4",
                         title: "포상 업무 관련",
                         items: [
-                            { no: "1", content: "3년(기관(단체)은 2년)이내에 표창 수여 여부", scope: "각급학교" },
+                            { no: "1", content: "3년(기관(단체)은 2년)이내에 표창 수여", scope: "각급학교" },
                             { no: "2", content: "공적심사위원회(인사자문위원회) 설치·운영의 적정성 여부", scope: "각급학교" },
                             { no: "3", content: "공적심사위원회(인사자문위원회) 회의록 작성 여부", scope: "각급학교" }
                         ]
                     },
                     {
                         id: "15-1",
-                        title: "정보보안 및 개인정보 보호 *(원문 표기 준수)*",
+                        title: "정보보안 및 개인정보 보호",
                         items: [
-                            { no: "1", content: "정보보안담당관 지정 및 정보보안 업무 추진계획 수립 여부", scope: "유" },
-                            { no: "2", content: "사이버 보안 진단(정보보안 분야)의 날 운영 및 PC에서 내PC지킴이, Privacy-i 등 실행 점검 여부", scope: "유" },
-                            { no: "3", content: "정보시스템별 관리취급자 지정 및 변경현황 유지관리 여부", scope: "유" },
-                            { no: "4", content: "정보시스템 관리대장 작성 및 적정 서식 사용 여부", scope: "유" },
-                            { no: "5", content: "중요 정보통신시설 및 장소의 보호구역 설정 관리 여부", scope: "유" },
-                            { no: "6", content: "정보통신시설에 대한 보안대책 여부(소화기 비치, 이중 잠금장치 설치 등)", scope: "유" },
-                            { no: "7", content: "PC 등 단말기 보안관리(CMOS 비밀번호, 중요문서 암호화 비밀번호 설정, 로그온 비밀번호 설정 여부)", scope: "유" },
-                            { no: "8", content: "화면보호기 설정 여부(10분 이상)", scope: "유" },
-                            { no: "9", content: "비밀번호 관리 및 규칙 준수 여부", scope: "유" },
-                            { no: "10", content: "개인정보 내부 관리계획 수립 시행 여부(필수사항 포함, 개인정보 보호책임자(CPO) 결재 획득 여부)", scope: "유" },
-                            { no: "11", content: "개인정보 처리방침 수립 시행 여부(필수사항 포함, CPO 결재 획득, 홈페이지 공개 및 현행화 여부)", scope: "유" },
-                            { no: "12", content: "업무용 PC에 법적 근거 없이 주민등록번호 보관 여부 및 법적 근거에 의해 저장 보관 시 암호화 여부", scope: "유" },
-                            { no: "13", content: "법적 근거없이 주민등록번호 수집 여부 (채용 공고시 이력서, 제출서류의 등·초본 요구 등)", scope: "유" },
-                            { no: "14", content: "개인정보 처리업무 위탁 시 필수사항 포함하여 문서로 계약하고 있는지 여부", scope: "유" },
-                            { no: "15", content: "영상정보 처리장치 안내판 고지 여부 및 저장장치의 물리적 시건장치가 있는 장소 보관 여부", scope: "유" }
+                            { no: "1", content: "정보보안담당관 지정 및 정보보안 업무 추진계획 수립 여부", scope: "각급학교" },
+                            { no: "2", content: "사이버보안진단의 날 운영 여부", scope: "각급학교" },
+                            { no: "3", content: "PC에서 내PC지킴이, Privacy-i 등 실행 점검", scope: "각급학교" },
+                            { no: "4", content: "정보시스템별 관리취급자 지정 및 변경현황 유지관리 여부", scope: "각급학교" },
+                            { no: "5", content: "정보시스템 관리대장 작성 및 적정 서식 사용 여부", scope: "각급학교" },
+                            { no: "6", content: "중요 정보통신시설 및 장소의 보호구역 설정 관리 여부", scope: "각급학교" },
+                            { no: "7", content: "정보통신시설에 대한 보안대책 여부(소화기 비치, 이중 잠금장치 설치 등)", scope: "각급학교" },
+                            { no: "8", content: "PC(CMOS 비밀번호)·자료(중요문서자료 암호화 비밀번호설정)·사용자(로그온 비밀번호) 여부", scope: "각급학교" },
+                            { no: "9", content: "화면보호기 설정 여부 (10분 이상)", scope: "각급학교" },
+                            { no: "10", content: "비밀번호 관리 및 규칙 준수 여부", scope: "각급학교" },
+                            { no: "11", content: "필수사항 포함 여부 (개인정보 내부 관리계획)", scope: "각급학교" },
+                            { no: "12", content: "개인정보 보호책임자(CPO) 결재 획득 여부 (내부 관리계획)", scope: "각급학교" },
+                            { no: "13", content: "필수사항 포함 여부 (개인정보 처리방침)", scope: "각급학교" },
+                            { no: "14", content: "개인정보 보호책임자(CPO) 결재 획득 여부 (처리방침)", scope: "각급학교" },
+                            { no: "15", content: "홈페이지에 공개 및 현행화 여부", scope: "각급학교" },
+                            { no: "16", content: "업무용 PC에 법적 근거 없이 주민등록번호 보관 여부", scope: "각급학교" },
+                            { no: "17", content: "CCTV 설치·운영 규정 마련, 개인정보보호위원회에 등록 여부", scope: "각급학교" },
+                            { no: "18", content: "CCTV 안내판 설치 여부", scope: "각급학교" },
+                            { no: "19", content: "영상정보처리기기 운영·관리 방침 수립 및 공개 여부", scope: "각급학교" },
+                            { no: "20", content: "CCTV 저장장치 보안관리 여부", scope: "각급학교" }
                         ]
                     }
                 ]
             },
             finance: {
-                title: "회계분야 자가진단표",
+                title: "회계분야 자가진단",
                 categories: [
                     {
                         id: "1-1",
                         title: "공문서 관리",
                         items: [
                             { no: "1", content: "기록물 관리계획의 수립 여부", scope: "각급학교" },
-                            { no: "2", content: "생산의무기록물(회의록, 시청각기록물)의 생산 및 등록 적정 여부", scope: "각급학교" },
+                            { no: "2", content: "생산의무기록물 (회의록, 시청각기록물)의 생산 및 등록 적정 여부", scope: "각급학교" },
                             { no: "3", content: "기록물 분류 및 단위과제별, 단위과제카드별 편철의 적정 여부", scope: "각급학교" },
                             { no: "4", content: "기록물관리책임자 지정 여부", scope: "각급학교" },
                             { no: "5", content: "기록물 정리의 적절성 (접근 권한, 공개 여부, 보존기간 등)", scope: "각급학교" },
-                            { no: "6", content: "학교장 결재 문서 대국민 공개 여부 적절성 (개인정보·민감정보 포함 문서, 입찰계약 등 내부검토 사항)", scope: "각급학교" },
+                            { no: "6", content: "학교장 결재 문서 대국민 공개 여부 적절성 (개인정보, 민감정보 포함 문서, 입찰계약 등 내부검토 사항)", scope: "각급학교" },
                             { no: "7", content: "기록물생산현황 통보 일정 준수 여부", scope: "각급학교" },
                             { no: "8", content: "보존문서기록대장 관리 적정 여부", scope: "각급학교" },
                             { no: "9", content: "기록물의 임의 폐기 여부", scope: "각급학교" },
@@ -833,7 +722,7 @@
                         title: "민원 관리",
                         items: [
                             { no: "1", content: "민원사무 처리기한 준수 여부", scope: "각급학교" },
-                            { no: "2", content: "민원 처리상황의 확인·점검 여부", scope: "각급학교" },
+                            { no: "2", content: "민원 처리상황의 확인·점검", scope: "각급학교" },
                             { no: "3", content: "민원인에게 민원서류 중 불필요한 서류 요구 여부", scope: "각급학교" },
                             { no: "4", content: "학교장의 매월 1회 이상 민원 처리 상황의 확인 점검 여부", scope: "각급학교" },
                             { no: "5", content: "행정정보 사전공표 여부", scope: "각급학교" },
@@ -844,18 +733,19 @@
                         id: "1-3",
                         title: "공인 관리",
                         items: [
-                            { no: "1", content: "행정전자서명인증서의 공유 여부 (타인의 개인용 인증서 저장, 담당자 외 기관(업무)용 인증서 저장 및 사용 여부)", scope: "각급학교" },
-                            { no: "2", content: "공인 보관 장소 및 보안대책 여부", scope: "각급학교" },
-                            { no: "3", content: "공인의 교부 및 등록과 폐기절차 준수 여부", scope: "각급학교" },
-                            { no: "4", content: "공인의 날인 적정 여부 (공인 날인 시 공인날인기록부 등재 여부)", scope: "각급학교" },
-                            { no: "5", content: "(전자이미지)공인의 부정 사용, 위조·변조 사용 여부 (전자이미지공인 승인 대장 작성 관리 여부)", scope: "각급학교" }
+                            { no: "1", content: "행정전자서명인증서의 공유 여부 (타인의 개인용 인증서 저장 여부)", scope: "각급학교" },
+                            { no: "2", content: "담당자 외 기관(업무)용 인증서 저장 및 사용 여부", scope: "각급학교" },
+                            { no: "3", content: "공인 보관 장소 및 보안대책 여부", scope: "각급학교" },
+                            { no: "4", content: "공인의 교부 및 등록과 폐기절차 준수", scope: "각급학교" },
+                            { no: "5", content: "공인의 날인 적정 여부 (공인 날인 시 공인날인기록부 등재 여부)", scope: "각급학교" },
+                            { no: "6", content: "(전자이미지)공인의 부정 사용, 위조·변조 사용 여부 (전자이미지공인 승인 대장 작성 관리 여부)", scope: "각급학교" }
                         ]
                     },
                     {
                         id: "1-4",
                         title: "업무 인계·인수",
                         items: [
-                            { no: "1", content: "학교장 및 출납원 업무 인계⋅인수 기한 준수 여부 (발령일로부터 5일 이내, 학교발전기금 관련 업무 포함)", scope: "각급학교" },
+                            { no: "1", content: "학교장 및 출납원 업무 인계⋅인수 기한 준수 여부 (발령일로부터 5일 이내), 학교발전기금 관련 업무 인계⋅인수 여부", scope: "각급학교" },
                             { no: "2", content: "비밀문서를 비밀관리기록부에 의거 인계⋅인수 여부", scope: "각급학교" },
                             { no: "3", content: "공무원 인사발령에 따라 개인 업무별 인계⋅인수 이행 여부", scope: "각급학교" },
                             { no: "4", content: "물품출납원 변경 시 업무 인계⋅인수 여부", scope: "각급학교" }
@@ -865,12 +755,12 @@
                         id: "1-5",
                         title: "보안 관리",
                         items: [
-                            { no: "1", content: "보안교육 및 보안사고 예방 관리 적정 여부 (신규·전입자 교육, 상․하반기 보안교육, 매월 보안점검 실시 여부)", scope: "각급학교" },
+                            { no: "1", content: "보안교육 및 보안사고 예방 관리 적정 여부 (신규자·전입자 보안교육, 상·하반기 보안교육, 매월 보안점검 여부)", scope: "각급학교" },
                             { no: "2", content: "비밀 재분류 검토 및 관리 적정성 여부", scope: "각급학교" },
                             { no: "3", content: "안전반출 및 파기계획 수립·운영의 적정 여부", scope: "각급학교" },
                             { no: "4", content: "보안구역 지정 및 관리의 적정 여부", scope: "각급학교" },
                             { no: "5", content: "보안점검표, 당직근무일지 구비 및 작성 여부", scope: "각급학교" },
-                            { no: "6", content: "직원연락체계 유지 및 현행화 (필수요원 지정 여부)", scope: "각급학교" }
+                            { no: "6", content: "직원연락체계 유지 및 현행화, 필수요원 지정 여부", scope: "각급학교" }
                         ]
                     },
                     {
@@ -880,15 +770,17 @@
                             { no: "1", content: "학교운영위원회 자체 규정 개정 여부 (학생수 변경에 따른 정원 개정, 규정 변경사항 현행화 여부)", scope: "각급학교" },
                             { no: "2", content: "학교운영위원회 위원 정수 및 구성비율 적정 여부", scope: "각급학교" },
                             { no: "3", content: "학교운영위원회 선출관리위원회 구성 여부", scope: "각급학교" },
-                            { no: "4", content: "학교운영위원 선출방법 적정 여부 (다른 학교 위원 겸임 여부, 결격사유조회 여부)", scope: "각급학교" },
-                            { no: "5", content: "학교운영위원회 회의 운영의 적정성 (회의일시 및 회의 소집 학부모 안내, 홈페이지 공개, 정기회 일자 준수 여부)", scope: "각급학교" },
-                            { no: "6", content: "안건 발의 및 처리 적정 여부 (회의 개최 7일전 안내)", scope: "각급학교" },
-                            { no: "7", content: "의사정족수 및 의결정족수 준수 여부", scope: "각급학교" },
-                            { no: "8", content: "학교운영위원회 심의(자문)사항 심의 여부 (학칙 제·개정, 예산안 및 결산, 교육과정 운영, 현장체험학습, 급식 등)", scope: "각급학교" },
-                            { no: "9", content: "심의 결과와 다르게 시행하였을 경우 보고 여부", scope: "각급학교" },
-                            { no: "10", content: "학교운영위원회 회의록 작성의 적정성", scope: "각급학교" },
-                            { no: "11", content: "학교운영위원에 대한 연수 실시 여부", scope: "각급학교" },
-                            { no: "12", content: "학교운영위원회 회의결과 공개 여부", scope: "각급학교" }
+                            { no: "4", content: "학교운영위원 선출방법 적정 여부 (다른 학교 위원 겸임 여부)", scope: "각급학교" },
+                            { no: "5", content: "결격사유조회 여부", scope: "각급학교" },
+                            { no: "6", content: "학교운영위원회 회의 운영의 적정성 (회의일시 및 회의 소집 적정 여부, 학부모 안내, 홈페이지 공개)", scope: "각급학교" },
+                            { no: "7", content: "정기회 일자 준수 여부", scope: "각급학교" },
+                            { no: "8", content: "안건 발의 및 처리 적정 여부 (회의 개최 7일전 안내)", scope: "각급학교" },
+                            { no: "9", content: "의사정족수 및 의결정족수 준수 여부", scope: "각급학교" },
+                            { no: "10", content: "학교운영위원회 심의(자문)사항 심의 여부 (학칙 제·개정, 예산안 및 결산, 학교교육과정 운영 방법, 현장체험학습, 졸업앨범, 학교급식, 학교운동부 구성·운영, 학교발전기금 등)", scope: "각급학교" },
+                            { no: "11", content: "심의 결과와 다르게 시행하였을 경우 보고 여부", scope: "각급학교" },
+                            { no: "12", content: "학교운영위원회 회의록 작성의 적정성", scope: "각급학교" },
+                            { no: "13", content: "학교운영위원에 대한 연수 실시 여부", scope: "각급학교" },
+                            { no: "14", content: "학교운영위원회 회의결과 공개 여부", scope: "각급학교" }
                         ]
                     },
                     {
@@ -900,7 +792,8 @@
                             { no: "3", content: "직무수행 시 특정인에게 혜택 또는 차별을 주었는지 여부", scope: "각급학교" },
                             { no: "4", content: "인사 청탁 및 인사에 대한 부당한 개입 여부", scope: "각급학교" },
                             { no: "5", content: "행동강령 책임관의 직원에 대한 행동강령교육 실시 여부", scope: "각급학교" },
-                            { no: "6", content: "여비 및 업무추진비 예산 목적 외 사용 여부 (업무추진비 사적 용도 사용, 여비 부당 수령 여부)", scope: "각급학교" }
+                            { no: "6", content: "여비 및 업무추진비 예산 목적 외 사용 여부 (업무추진비 사적 용도 사용 여부)", scope: "각급학교" },
+                            { no: "7", content: "여비 부당 수령 여부", scope: "각급학교" }
                         ]
                     },
                     {
@@ -909,24 +802,27 @@
                         items: [
                             { no: "1", content: "직위를 이용하여 부당한 이익을 얻거나 타인이 부당한 이익을 얻도록 하였는지 여부", scope: "각급학교" },
                             { no: "2", content: "직무관련 정보를 이용한 본인 및 타인의 부당한 재산상 거래 또는 투자 여부", scope: "각급학교" },
-                            { no: "3", content: "공용물의 사적사용 및 수익 여부 (관용차량 사적사용, 항공마일리지·적립포인트 등 부가서비스 사적사용 여부)", scope: "각급학교" },
-                            { no: "4", content: "직무관련자, 직무관련 공무원으로부터 사적 노무를 제공 받거나 요구했는지 여부", scope: "각급학교" },
-                            { no: "5", content: "직위를 이용하여 다른 공무원의 직무에 속한 사항에 대하여 알선‧청탁 여부", scope: "각급학교" },
-                            { no: "6", content: "직무 관련자 및 직무관련 공무원으로부터 금품‧향응 등 수수 여부", scope: "각급학교" },
-                            { no: "7", content: "직무 관련자와의 사적인 접촉 여부 (골프, 사행성 오락, 여행 동행, 주관 모임이나 행사 참석 여부)", scope: "각급학교" }
+                            { no: "3", content: "공용물의 사적사용 및 수익 여부 (관용차량‧선박 등 공용물의 사적사용 여부)", scope: "각급학교" },
+                            { no: "4", content: "예산의 사용으로 발생한 항공마일리지, 적립포인트 등 부가서비스 사적사용 여부", scope: "각급학교" },
+                            { no: "5", content: "직무관련자, 직무관련 공무원으로부터 사적 노무를 제공 받거나 요구했는지 여부", scope: "각급학교" },
+                            { no: "6", content: "직위를 이용하여 다른 공무원의 직무에 속한 사항에 대하여 알선‧청탁 여부", scope: "각급학교" },
+                            { no: "7", content: "직무 관련자 및 직무관련 공무원으로부터 금품‧향응 등 수수 여부", scope: "각급학교" },
+                            { no: "8", content: "직무관련자와의 사적인 접촉을 하였는지 여부 (직무관련자와 함께 골프, 사행성 오락, 여행 동행 여부)", scope: "각급학교" },
+                            { no: "9", content: "직무관련자가 주관하는 모임이나 행사 참석 여부", scope: "각급학교" }
                         ]
                     },
                     {
                         id: "2-3",
                         title: "건전한 공직풍토의 조성",
                         items: [
-                            { no: "1", content: "청탁금지법 관련 교육 연 1회 이상 실시 여부 (교직원, 학부모, 학교운영위원회)", scope: "각급학교" },
+                            { no: "1", content: "청탁금지법 관련 교육 연 1회 이상 실시 여부 (교직원, 학부모, 학교운영위원회 교육 실시 여부)", scope: "각급학교" },
                             { no: "2", content: "겸직 허가 신청 여부", scope: "각급학교" },
                             { no: "3", content: "대가를 받는 외부강의 및 회의 신고 여부", scope: "각급학교" },
                             { no: "4", content: "외부강의·회의 등의 대가가 통상적으로 적용하는 기준의 초과 여부", scope: "각급학교" },
-                            { no: "5", content: "직무관련자 또는 직무관련공무원과의 금전 차용 및 부동산 무상임차(또는 현저히 낮은 가격 임차) 여부", scope: "각급학교" },
-                            { no: "6", content: "직무관련자나 직무관련공무원에게 경조사 통지 및 경조금 수수 여부", scope: "각급학교" },
-                            { no: "7", content: "경조사와 관련하여 5만원을 초과하는 경조사비 수수 여부", scope: "각급학교" }
+                            { no: "5", content: "직무관련자 또는 직무관련공무원과의 금전 차용 및 부동산 무상임차 여부", scope: "각급학교" },
+                            { no: "6", content: "직무관련자 또는 직무관련공무원과 시세가 대비 현저하게 낮은 가격으로 부동산 임차 여부", scope: "각급학교" },
+                            { no: "7", content: "직무관련자나 직무관련공무원에게 경조사 통지 및 경조금 수수 여부", scope: "각급학교" },
+                            { no: "8", content: "경조사와 관련하여 5만원을 초과하는 경조사비 수수 여부", scope: "각급학교" }
                         ]
                     },
                     {
@@ -943,30 +839,29 @@
                         id: "3-1",
                         title: "공사 계약",
                         items: [
-                            { no: "1", content: "공사집행 계획 수립 및 설계 적정 여부 (예정가격 작성, 설계변경 적정 등)", scope: "각급학교" },
-                            { no: "2", content: "추정가격 기준에 따른 일상감사 신청 여부", scope: "각급학교" },
-                            { no: "3", content: "기초금액 적정 여부 (원가계산 제비율 준수, 보험료 반영, 산업안전보건관리비 반영 등)", scope: "각급학교" },
-                            { no: "4", content: "계약 방법 적정 여부 (추정가격 기준 준수)", scope: "각급학교" },
-                            { no: "5", content: "공사계약 체결 적정 여부 (전문건설업자 계약, 분할계약 여부 제한, 계약보증서·인지세 징구 등)", scope: "각급학교" },
-                            { no: "6", content: "계약이행 서류 적정성 (착공 시 제출서류, 하도급계약 적정, 하도급지킴이 이용 등)", scope: "각급학교" },
-                            { no: "7", content: "공사감독 철저 여부 (자재관리 및 검수, 일괄 하도급 방지, 부당시공 여부, 설계변경 이행 조치 등)", scope: "각급학교" },
-                            { no: "8", content: "준공검사 철저 여부 (부족시공 및 미시공 확인, 준공검사조서 작성, 관계기관검사 이행 등)", scope: "각급학교" },
-                            { no: "9", content: "선금 지급 및 정산 등 (선금보증서 징구, 지급요건 충족 여부)", scope: "각급학교" },
-                            { no: "10", content: "공사의 사후 정산 (산업안전보건관리비, 환경보전비, 건설기계 대여 대금 지급보증, 폐기물 처리, 수도광열비 등)", scope: "각급학교" },
-                            { no: "11", content: "하자보수 관리 (하자보수보증금율 산정 및 보증서 징구, 담보책임기간 산정, 하자검사 실시 등)", scope: "각급학교" }
+                            { no: "1", content: "공사집행 계획 수립 및 설계 적정 여부 (공사집행 계획 수립, 예정가격 작성, 설계변경 적정 여부)", scope: "각급학교" },
+                            { no: "2", content: "일상감사 신청 여부 (종합공사 추정가격 10억원 이상, 기타공사 추정가격 5억원 이상)", scope: "각급학교" },
+                            { no: "3", content: "기초금액 적정 여부 (시설공사 원가계산 제비율 준수, 원가계산서 각 항목 반영, 보험료 반영, 산업안전보건관리비 반영)", scope: "각급학교" },
+                            { no: "4", content: "계약 방법 적정 여부 (추정가격 기준 수의계약 및 제한/일반입찰 근거 준수 여부)", scope: "각급학교" },
+                            { no: "5", content: "공사계약 체결 적정 여부 (전문건설업자 계약, 분할계약 여부, 계약문서 구비, 계약보증서·인지세 징구 여부)", scope: "각급학교" },
+                            { no: "6", content: "계약이행 (착공 시 제출서류 적정, 하도급계약 적정 여부)", scope: "각급학교" },
+                            { no: "7", content: "공사감독 (자재관리 및 자재 검수 소홀 여부, 일괄 하도급 방지, 부족시공 및 부당시공 여부)", scope: "각급학교" },
+                            { no: "8", content: "준공검사 (설계내역 대비 부족시공 및 미시공 확인, 준공검사조서 작성, 관계기관 검수 및 제출서류 적정 여부)", scope: "각급학교" },
+                            { no: "9", content: "선금 지급 및 정산 (선금 지급 보증서 징구 및 요건 충족 여부, 공사의 사후 정산)", scope: "각급학교" },
+                            { no: "10", content: "하자보수 (하자보수보증금율 산정 및 보증금 징구, 하자담보책임기간 산정, 하자검사 실시 및 처리 여부)", scope: "각급학교" }
                         ]
                     },
                     {
                         id: "3-2",
                         title: "용역 계약(수학여행, 현장학습 등)",
                         items: [
-                            { no: "1", content: "수학여행 및 현장학습 계획 수립 여부 (학교운영위원회 심의 여부 포함)", scope: "각급학교" },
+                            { no: "1", content: "수학여행 및 현장학습 계획 수립 여부 (학교운영위원회 심의 여부)", scope: "각급학교" },
                             { no: "2", content: "추정가격 2억원 이상 일상감사 신청 여부", scope: "각급학교" },
-                            { no: "3", content: "계약방법 적정 여부 (추정가격 기준 준수)", scope: "각급학교" },
-                            { no: "4", content: "계약보증서 징구 여부", scope: "각급학교" },
+                            { no: "3", content: "계약방법 적정 여부 (추정가격 기준 일반용역, 건설기술용역, 안전진단용역 기준 준수)", scope: "각급학교" },
+                            { no: "4", content: "계약보증서 징구 여부 (계약금액이 5천만원 이하는 지급각서 대체 가능)", scope: "각급학교" },
                             { no: "5", content: "운행차량 및 운전자 적격 확인 여부", scope: "각급학교" },
-                            { no: "6", content: "인지세 징구 여부 (계약금액 1천만 원 초과 용역)", scope: "각급학교" },
-                            { no: "7", content: "선금 지급 시 선금보증서 징구 여부", scope: "각급학교" }
+                            { no: "6", content: "인지세 징구 여부 [계약금액 1천만 원 초과 공사·용역·물품 제조 계약]", scope: "각급학교" },
+                            { no: "7", content: "선금 지급 - 선금보증서 징구 여부(항공권 발권 대행 포함)", scope: "각급학교" }
                         ]
                     },
                     {
@@ -975,164 +870,234 @@
                         items: [
                             { no: "1", content: "구매예정금액 2천만원 이상 물품선정위원회 개최 여부", scope: "각급학교" },
                             { no: "2", content: "추정가격 1억원 이상 일상감사 신청 여부", scope: "각급학교" },
-                            { no: "3", content: "계약방법 적정 여부 (추정가격 기준 준수)", scope: "각급학교" },
-                            { no: "4", content: "계약보증서 및 인지세 징구 여부", scope: "각급학교" },
-                            { no: "5", content: "선금 지급 시 선금보증서 징구 여부", scope: "각급학교" },
-                            { no: "6", content: "적격심사의 적정 여부", scope: "각급학교" }
+                            { no: "3", content: "계약방법 적정 여부 (추정가격 기준 물품제조·구매 2천만원 이하 수의계약 등 기준 준수)", scope: "각급학교" },
+                            { no: "4", content: "계약보증서 징구 여부 (계약금액이 5천만원 이하는 지급각서 대체 가능)", scope: "각급학교" },
+                            { no: "5", content: "인지세 징구 여부 [계약금액 1천만 원 초과 공사·용역·물품 제조 계약, 물품 단순구매는 비과세]", scope: "각급학교" },
+                            { no: "6", content: "선금 지급 - 선금보증서 징구 여부", scope: "각급학교" },
+                            { no: "7", content: "적격심사의 적정 여부", scope: "각급학교" }
                         ]
                     },
                     {
                         id: "4-1",
                         title: "안전점검 및 재난 예방",
                         items: [
-                            { no: "1", content: "재난 및 안전관리의 적절성 (안전점검의 날 운영, 자연재난 대비 시설 안전점검 실시)", scope: "각급학교" },
-                            { no: "2", content: "어린이 활동 공간 ‧ 놀이시설 안전관리 적법성 (확인검사, 정기안전검사 및 월 1회 자체점검 실시)", scope: "각급학교" },
-                            { no: "3", content: "재해보고의 적정성 (교육지원청 동시 보고, 교육시설재난공제회 가입 및 재난복구비 신청)", scope: "각급학교" }
+                            { no: "1", content: "재난 및 안전관리의 적절성", scope: "각급학교" },
+                            { no: "2", content: "안전점검의 날 운영(매월 4일)", scope: "각급학교" },
+                            { no: "3", content: "취약기간 자연재난 대비 학교시설 안전점검 실시", scope: "각급학교" },
+                            { no: "4", content: "어린이활동공간 확인검사 또는 대체서류 제출", scope: "유‧초‧특수" },
+                            { no: "5", content: "어린이놀이시설 정기안전검사 실시(2년에 1회 이상)", scope: "유‧초‧특수" },
+                            { no: "6", content: "어린이놀이시설 자체안전점검 실시(월 1회 이상)", scope: "각급학교" },
+                            { no: "7", content: "교육지원청 등 해당 기관(부서)에 동시 보고", scope: "각급학교" },
+                            { no: "8", content: "교육시설재난공제회 가입 및 재난복구비 등 신청", scope: "각급학교" }
                         ]
                     },
                     {
                         id: "4-2",
                         title: "산업안전보건",
                         items: [
-                            { no: "1", content: "법령 요지 및 안전보건관리 규정 게시 여부", scope: "각급학교" },
-                            { no: "2", content: "위험성평가 실시 여부 (매년 정기평가, 발생 시 수시평가)", scope: "각급학교" },
-                            { no: "3", content: "안전보건표지 부착 여부", scope: "각급학교" },
-                            { no: "4", content: "물질안전보건자료(MSDS) 관리 (사용장소 및 행정실·영양실 비치, 소분용기 약식 표시)", scope: "각급학교" },
-                            { no: "5", content: "휴게시설 설치 및 설치 조건 충족 여부", scope: "각급학교" },
-                            { no: "6", content: "산업재해 발생 보고의 적정성 (은폐·지연보고 여부, 보고 체계 준수)", scope: "각급학교" },
-                            { no: "7", content: "산업안전보건교육 이수의 적정성 (관리감독자 교육, MSDS 교육, 법정 이수시간 준수 여부)", scope: "각급학교" },
-                            { no: "8", content: "현업업무 종사자 건강진단 및 건강관리 (일반건강검진, 근골격계유해요인조사, 특수건강검진 실시 및 서류보관)", scope: "각급학교" }
+                            { no: "1", content: "법령 요지 게시 여부", scope: "기관·학교" },
+                            { no: "2", content: "안전보건관리 규정 게시 여부", scope: "기관·학교" },
+                            { no: "3", content: "정기평가 실시 여부(매년)", scope: "기관·학교" },
+                            { no: "4", content: "수시평가 실시 여부(발생 시)", scope: "기관·학교" },
+                            { no: "5", content: "안전보건표지 미부착 여부", scope: "기관·학교" },
+                            { no: "6", content: "물질안전보건자료 사용장소에 게시 및 비치", scope: "기관·학교" },
+                            { no: "7", content: "물질안전보건자료 묶음 행정실, 영양(교)사실 게시 및 비치", scope: "기관·학교" },
+                            { no: "8", content: "소분용기에 약식 표시 부착", scope: "기관·학교" },
+                            { no: "9", content: "휴게시설 설치", scope: "기관·학교" },
+                            { no: "10", content: "휴게시설 설치의 적정성", scope: "기관·학교" },
+                            { no: "11", content: "산업재해 발생 미보고 및 지연보고의 여부", scope: "기관·학교" },
+                            { no: "12", content: "의도적인 산업재해 은폐 여부", scope: "기관·학교" },
+                            { no: "13", content: "산업재해 발생 보고 체계 준수 여부", scope: "기관·학교" },
+                            { no: "14", content: "관리감독자 대상 정기안전보건교육 이수 여부", scope: "기관·학교" },
+                            { no: "15", content: "채용시·정기·작업내용 변경 시 교육 이수 여부", scope: "기관·학교" },
+                            { no: "16", content: "MSDS 교육 실시 및 일지 작성 여부", scope: "기관·학교" },
+                            { no: "17", content: "산업안전보건교육 법정 이수시간 준수 여부", scope: "기관·학교" },
+                            { no: "18", content: "일반건강검진 실시 여부 및 결과 보관(개인정보 관리)", scope: "기관·학교" },
+                            { no: "19", content: "근골격계유해요인조사 실시 여부 및 서류보관", scope: "기관·학교" },
+                            { no: "20", content: "소음 노출교(85dB) 특수건강검진 실시 여부", scope: "기관·학교" },
+                            { no: "21", content: "특수건강진단 결과표(산안법 별지 제85호 서식) 보관", scope: "기관·학교" }
                         ]
                     },
                     {
                         id: "4-3",
                         title: "중대재해예방",
                         items: [
-                            { no: "1", content: "유해‧위험요인 확인 및 개선 조치 여부", scope: "각급학교" },
-                            { no: "2", content: "유해‧위험요인 개선에 따른 예산 편성 및 집행 여부", scope: "각급학교" },
-                            { no: "3", content: "긴급상황 시 체계적 대응 (비상연락망 구축·공유, 대응 훈련 실시)", scope: "각급학교" },
-                            { no: "4", content: "도급 등 사업시 종사자 안전보건 확보 (위험성평가, 안전보건관리계획서 징구, 수급업체 평가)", scope: "각급학교" },
-                            { no: "5", content: "관리감독자 업무수행 평가 실시 여부", scope: "각급학교" }
+                            { no: "1", content: "유해‧위험요인 개선 조치 여부", scope: "각급학교" },
+                            { no: "2", content: "유해‧위험요인 개선에 따른 예산 집행", scope: "각급학교" },
+                            { no: "3", content: "비상연락망 구축 및 공유", scope: "각급학교" },
+                            { no: "4", content: "재해 발생 시 대응 훈련 실시", scope: "각급학교" },
+                            { no: "5", content: "위험성평가 실시", scope: "각급학교" },
+                            { no: "6", content: "안전보건관리계획서 징구", scope: "각급학교" },
+                            { no: "7", content: "수급업체 평가 실시", scope: "각급학교" },
+                            { no: "8", content: "관리감독자 업무수행 평가", scope: "각급학교" }
                         ]
                     },
                     {
                         id: "5-1",
                         title: "지방공무원 인사",
                         items: [
-                            { no: "1", content: "휴직공무원 및 겸직공무원 복무 관리 적정 여부", scope: "각급학교" },
-                            { no: "2", content: "정기승급 누락 여부", scope: "각급학교" },
-                            { no: "3", content: "교직원의 교육훈련 시간 및 자기개발계획서 수립‧관리의 적정성 여부", scope: "각급학교" },
-                            { no: "4", content: "교육‧학습에 대한 증빙서류 관리 및 상시학습 허위·부정 등재 여부", scope: "각급학교" }
+                            { no: "1", content: "휴직공무원 복무 관리 적정 여부", scope: "각급학교" },
+                            { no: "2", content: "겸직공무원 복무 관리 적정 여부", scope: "각급학교" },
+                            { no: "3", content: "정기승급 누락 여부", scope: "각급학교" },
+                            { no: "4", content: "교직원의 교육훈련 시간 및 자기개발계획서 수립‧관리의 적정성 여부", scope: "각급학교" },
+                            { no: "5", content: "교육‧학습에 대한 증빙서류 관리 여부", scope: "각급학교" },
+                            { no: "6", content: "상시학습 허위 및 부정 등재 여부", scope: "각급학교" }
                         ]
                     },
                     {
                         id: "5-2",
                         title: "교육공무직원 인사",
                         items: [
-                            { no: "1", content: "채용을 위한 사전 승인 절차 및 채용 절차(공고기간, 구비서류 등) 준수 여부", scope: "각급학교" },
-                            { no: "2", content: "채용(예정)자 성범죄 경력 및 아동학대 관련 범죄전력 조회 여부", scope: "각급학교" },
-                            { no: "3", content: "채용공고 및 근로계약서 작성 시 수습기간 운영 명시 여부 및 연 2회 근무성적 평가 실시 여부", scope: "각급학교" },
-                            { no: "4", content: "NEIS 교육공무직원 인사기록 정비·관리 및 복무관리, 근로시간 처리의 적정성 여부", scope: "각급학교" },
-                            { no: "5", content: "유(무)급 병가 사용의 적정성, 재량휴업일 적정 사용, 육아시간 준수 여부", scope: "각급학교" },
-                            { no: "6", content: "보수지급 적정성 (연장근로 주당 12시간 준수, 연차휴가 미사용 수당, 방학 중 비근로자 보수 일할 계산 등)", scope: "각급학교" },
-                            { no: "7", content: "교육공무직원 겸직허가 신청 여부 및 단체 협약 준수 여부", scope: "각급학교" }
+                            { no: "1", content: "채용을 위한 사전 승인 절차(신규채용 승인, 비정규직 채용 사전심사) 준수 여부", scope: "각급학교" },
+                            { no: "2", content: "채용 절차 준수 여부(공고기간, 구비서류 등)", scope: "각급학교" },
+                            { no: "3", content: "채용(예정)자 성범죄 경력 및 아동학대 관련 범죄전력 조회 여부", scope: "각급학교" },
+                            { no: "4", content: "채용공고 및 근로계약서 작성 시 수습기간 운영 명시 여부", scope: "각급학교" },
+                            { no: "5", content: "연 2회 근무성적 평가 실시 여부", scope: "각급학교" },
+                            { no: "6", content: "NEIS 교육공무직원 인사기록 정비 및 관리", scope: "각급학교" },
+                            { no: "7", content: "교육공무직원 복무관리의 적정성 여부", scope: "각급학교" },
+                            { no: "8", content: "교육공무직원 근로시간 등 처리 여부", scope: "각급학교" },
+                            { no: "9", content: "유(무)급 병가 사용의 적정성 여부", scope: "각급학교" },
+                            { no: "10", content: "재량휴업일 적정 사용", scope: "각급학교" },
+                            { no: "11", content: "육아시간 준수", scope: "각급학교" },
+                            { no: "12", content: "연장근로수당 주당 12시간 준수 및 지급 (휴게 시간 공제)적정 여부", scope: "각급학교" },
+                            { no: "13", content: "연차유급휴가 미사용 수당 지급 적정 여부", scope: "각급학교" },
+                            { no: "14", content: "방학 중 비근로자 보수 일할 계산 적정 여부", scope: "각급학교" },
+                            { no: "15", content: "신분 변동자 보수 지급 적정 여부", scope: "각급학교" },
+                            { no: "16", content: "근속수당 지급을 위한 경력 산정의 적정 여부", scope: "각급학교" },
+                            { no: "17", content: "교육공무직원 겸직허가 신청 여부", scope: "각급학교" },
+                            { no: "18", content: "단체 협약 준수 여부", scope: "각급학교" }
                         ]
                     },
                     {
                         id: "5-3",
                         title: "복무관리ㆍ품위유지",
                         items: [
-                            { no: "1", content: "근무시간 준수 여부 (근무상황 사전 신청 및 결재권자 허가 여부)", scope: "각급학교" },
+                            { no: "1", content: "근무시간 준수 여부 (근무상황 사전 신청 및 결재권자의 허가 여부)", scope: "각급학교" },
                             { no: "2", content: "시간외근무 적정 여부 (사전 초과근무 명령 준수, 초과근무확인대장 적정 기록·유지)", scope: "각급학교" },
-                            { no: "3", content: "병가일 7일 이상(연간 누계 6일 초과 포함) 진단서 징구 여부", scope: "각급학교" },
-                            { no: "4", content: "특별휴가의 적정성 (출산휴가 시 출산 후 45일 이상 확보, 경조사휴가 대상 및 일수 적정)", scope: "각급학교" },
-                            { no: "5", content: "휴직 공무원 동태 파악 여부 (휴직 사유 외 출국 금지, 기간 준수, 서류 구비 여부)", scope: "각급학교" }
+                            { no: "3", content: "병가일 7일 이상 진단서 징구 (연간 누계 6일 초과 시에도 반드시 징구)", scope: "각급학교" },
+                            { no: "4", content: "특별휴가의 적정성 (출산휴가 시 출산 후 45일 이상 확보, 경조사휴가 시 대상 및 휴가일수 적정)", scope: "각급학교" },
+                            { no: "5", content: "휴직 공무원 동태 파악 여부 (휴직 사유 이외 출국 금지, 휴·복직원 기간 준수, 제출서류 구비 여부)", scope: "각급학교" }
                         ]
                     },
                     {
                         id: "6-1",
                         title: "물품관리",
                         items: [
-                            { no: "1", content: "에듀파인 전산 물품대장상의 현행화 및 취득 물품의 대장 등재 여부(기증품 누락 확인)", scope: "각급학교" },
-                            { no: "2", content: "미술작품 관리대장 비치 및 미술작품 관리라벨 부착 여부", scope: "각급학교" },
-                            { no: "3", content: "정기 재물조사 실시 및 적정 여부 (매 2년마다)", scope: "각급학교" },
-                            { no: "4", content: "취득단가 100만원이상 물품에 대한 교육시설재난공제회 공제 가입 여부", scope: "각급학교" },
-                            { no: "5", content: "기관(학교)별 정수 및 실제 보유량의 적정성 및 수급관리 계획에 의한 취득·처분 적정성", scope: "각급학교" },
-                            { no: "6", content: "정수물품 변경 시 상급기관 승인절차 이행 및 물품변경 수급관리 계획서 제출 여부", scope: "각급학교" },
-                            { no: "7", content: "물품 출납명령에 의한 교부 및 전용품의 공차 시 공차증 제출 여부", scope: "각급학교" },
-                            { no: "8", content: "물품 출납원 업무 인계⋅인수 여부", scope: "각급학교" },
-                            { no: "9", content: "불용결정처리(소요조회 및 관리전환, 폐기 등)의 적정여부 및 불용결정 위임범위 준수 여부", scope: "각급학교" },
-                            { no: "10", content: "불용품 매각/폐기 시 처분조서(해체조서) 작성 여부", scope: "각급학교" }
+                            { no: "1", content: "에듀파인 전산 물품대장상의 현행화 여부", scope: "각급학교" },
+                            { no: "2", content: "취득 물품의 대장 등재 여부(기증품 누락 확인)", scope: "각급학교" },
+                            { no: "3", content: "미술작품 관리대장 비치 및 미술작품 관리라벨 부착 여부 (취득가격 50만 원 이상 서예, 도화, 조각, 공예, 사진 등)", scope: "각급학교" },
+                            { no: "4", content: "정기 재물조사 실시 및 적정 여부(매 2년마다)", scope: "각급학교" },
+                            { no: "5", content: "취득단가 100만원이상 또는 묶음가입 가능한 물품에 대한 교육시설재난공제회 공제 가입 여부", scope: "각급학교" },
+                            { no: "6", content: "기관(학교)별 정수 및 실제 보유량의 적정 여부", scope: "각급학교" },
+                            { no: "7", content: "수급관리 계획에 의한 정수물품 취득 및 처분 적정성 여부", scope: "각급학교" },
+                            { no: "8", content: "정수물품 변경 시 상급기관 승인절차 이행 및 물품변경 수급관리 계획서 제출 여부", scope: "각급학교" },
+                            { no: "9", content: "물품 출납명령에 의한 교부 여부", scope: "각급학교" },
+                            { no: "10", content: "전용품의 공차 시 공차증 제출 여부", scope: "각급학교" },
+                            { no: "11", content: "물품 출납원 업무 인계·인수 여부", scope: "각급학교" },
+                            { no: "12", content: "불용결정처리(소요조회 및 관리전환, 폐기 등)의 적정여부", scope: "각급학교" },
+                            { no: "13", content: "단가 2천만 원 이상: 교육장[행정지원국장] 자체 승인/위임 준수 여부", scope: "각급학교" },
+                            { no: "14", content: "단가 2천만 원 미만: 행정지원과장[재정지원과장] 자체 승인/위임 준수 여부", scope: "각급학교" },
+                            { no: "15", content: "단가 1천만 원 미만: 관서의 장 자체승인 준수 여부", scope: "각급학교" },
+                            { no: "16", content: "불용품 매각 시 불용품매각처분조서 작성 여부", scope: "각급학교" },
+                            { no: "17", content: "불용품 폐기 시 불용품폐기(해체)조서 작성 여부", scope: "각급학교" }
                         ]
                     },
                     {
                         id: "6-2",
                         title: "관용차량 관리",
                         items: [
-                            { no: "1", content: "용도(차종) 및 규모(차형) 변경, 차량교체 등 필요 시 사전승인 절차 이행 여부", scope: "각급학교" },
+                            { no: "1", content: "용도(차종) 및 규모(차형) 변경, 차량교체, 차량교환 등이 필요 시 사전승인 절차 이행 여부", scope: "각급학교" },
                             { no: "2", content: "노후차량 교체 시 법정 최단 운행기간 및 총 주행거리 등 교체기준 충족 여부", scope: "각급학교" },
-                            { no: "3", content: "공용차량의 안전운행을 위한 법령사항 준수 및 어린이통학버스 신고 여부", scope: "각급학교" },
-                            { no: "4", content: "차량보험 가입 여부", scope: "각급학교" },
-                            { no: "5", content: "어린이통학버스 운영자, 운전자, 동승보호자의 교통안전교육 이수 및 성범죄 조회 여부", scope: "각급학교" },
-                            { no: "6", content: "차량운행일지 및 공용차량 관리 카드 등 기록·관리 여부", scope: "각급학교" }
+                            { no: "3", content: "공용차량의 안전운행을 위한 법령사항 준수 여부", scope: "각급학교" },
+                            { no: "4", content: "어린이통학버스 신고 여부", scope: "각급학교" },
+                            { no: "5", content: "차량보험 가입 여부", scope: "각급학교" },
+                            { no: "6", content: "어린이통학버스 운영자, 운전자, 동승보호자의 교통안전교육 이수 여부", scope: "각급학교" },
+                            { no: "7", content: "어린이통학버스 운전자 및 보조탑승자의 성범죄 조회 여부", scope: "각급학교" },
+                            { no: "8", content: "차량운행일지 및 공용차량 관리 카드 등 기록·관리 여부", scope: "각급학교" }
                         ]
                     },
                     {
                         id: "6-3",
                         title: "재산 관리",
                         items: [
-                            { no: "1", content: "재산관리 및 변동에 관한 사항 기록․유지 여부 및 장기간 방치로 인한 재산 손실 여부", scope: "각급학교" },
-                            { no: "2", content: "무단 사용자에 대한 방치 또는 적정 조치 여부 및 한국교육시설안전원 공제회 공제 가입 여부", scope: "각급학교" },
-                            { no: "3", content: "학교장 위임사무의 준수 여부 (대장가격 5천만원 초과 재산 변동 시 상급기관 요청)", scope: "각급학교" },
-                            { no: "4", content: "행정재산의 사용허가 및 일반재산의 대부계약 적정 여부 (타인 사용 금지, 사용료 산정 적정성)", scope: "각급학교" },
-                            { no: "5", content: "대부료 수납 적정성 여부 및 분할 납부 시 보증금 예치, 이행보증보험 징구 여부", scope: "각급학교" },
-                            { no: "6", content: "대부료 미납에 따른 납부독촉 및 연체료 징수 여부", scope: "각급학교" },
-                            { no: "7", content: "매점 및 자동판매기 운영자 성범죄 조회 여부", scope: "각급학교" },
-                            { no: "8", content: "교육시설의 일시 사용허가 시 사용료의 징수 적정성 여부", scope: "각급학교" },
-                            { no: "9", content: "관사사용 허가신청서 등 서류 징구 및 관사 사용허가의 적정성(선정기준 준수), 관사운영비 지출 항목 적정성", scope: "각급학교" }
+                            { no: "1", content: "재산관리 및 변동에 관한 사항 기록·유지 여부", scope: "각급학교" },
+                            { no: "2", content: "장기간 방치로 인한 재산의 손실 여부", scope: "각급학교" },
+                            { no: "3", content: "무단 사용자에 대한 방치 또는 적정 조치 여부", scope: "각급학교" },
+                            { no: "4", content: "건물 및 물품, 부속물에 대한 한국교육시설안전원 공제회 공제 가입 여부", scope: "각급학교" },
+                            { no: "5", content: "학교장 위임사무의 준수 여부 (대장가격 5천만원 초과 재산의 취득·처분·용도변경·용도폐지는 교육장[교육감]에 요청)", scope: "각급학교" },
+                            { no: "6", content: "행정재산의 사용허가 및 일반재산의 대부계약 적정 여부", scope: "각급학교" },
+                            { no: "7", content: "사용[대부] 승인 후 타인 사용[대부] 여부", scope: "각급학교" },
+                            { no: "8", content: "사용료[대부료] 산정의 적정성 여부: 조례에 규정된 산출방식 및 요율 준수", scope: "각급학교" },
+                            { no: "9", content: "대부료 수납 적정성 여부(1차년도: 사용개시일 이전, 2차년도 이후: 사용개시일 30일 이전)", scope: "각급학교" },
+                            { no: "10", content: "분할 납부 시, 보증금 예치 및 이행보증보험 징구 여부", scope: "각급학교" },
+                            { no: "11", content: "대부료 미납에 따른 납부독촉 및 연체료 징수 여부", scope: "각급학교" },
+                            { no: "12", content: "매점 및 자동판매기 운영자 성범죄 조회 여부", scope: "각급학교" },
+                            { no: "13", content: "교육시설의 일시 사용허가 시 사용료의 징수 적정성 여부", scope: "각급학교" },
+                            { no: "14", content: "관사사용 허가신청서, 관사 입주신고서, 서약서 등의 징구 여부", scope: "각급학교" },
+                            { no: "15", content: "관사 사용허가의 적정성 여부(입주자 선정기준 및 절차 준수 여부)", scope: "각급학교" },
+                            { no: "16", content: "관사운영비 중 예산에서 지출할 수 있는 항목 이외의 지출여부", scope: "각급학교" }
                         ]
                     },
                     {
                         id: "7-1",
                         title: "예·결산",
                         items: [
-                            { no: "1", content: "예산편성 절차 준수, 학교운영위원회 예산안 제출기한 준수, 예산서 공개 여부", scope: "각급학교" },
-                            { no: "2", content: "성립전예산 집행 요건 및 집행 제한 적정성 여부", scope: "각급학교" },
-                            { no: "3", content: "추가경정예산(간주처리) 편성의 적정성 여부 (편성 요건 준수, 학운위 보고 및 확정시기 준수)", scope: "각급학교" },
-                            { no: "4", content: "예산의 이⋅전용 처리 부적정 여부", scope: "각급학교" },
-                            { no: "5", content: "명시이월(학운위 사전 심의 필요) 및 사고이월 사용요건 적합 여부", scope: "각급학교" },
-                            { no: "6", content: "예비비 사용 요건, 편성 기준 적합 및 사용 제한 준수 여부(업무추진비 성격 사용 불가)", scope: "각급학교" },
-                            { no: "7", content: "결산서 작성(자료 첨부) 적합 여부, 학운위 제출 및 심의 확정 준수, 결산서 공개 기한 준수", scope: "각급학교" }
+                            { no: "1", content: "예산편성 편성 절차 준수 여부", scope: "각급학교" },
+                            { no: "2", content: "학교운영위원회에 예산안 제출기한 준수 여부", scope: "각급학교" },
+                            { no: "3", content: "예산서 공개 여부", scope: "각급학교" },
+                            { no: "4", content: "성립전예산 집행 요건 및 집행 제한 적정성 여부", scope: "각급학교" },
+                            { no: "5", content: "회계연도말 간주처리 예산편성 요건 준수 여부", scope: "각급학교" },
+                            { no: "6", content: "간주처리 예산편성 시 다음에 소집되는 운영위원회 보고 여부", scope: "각급학교" },
+                            { no: "7", content: "간주처리 예산확정 시기 준수 여부", scope: "각급학교" },
+                            { no: "8", content: "예산의 이⋅전용 처리 부적정", scope: "각급학교" },
+                            { no: "9", content: "명시이월 사용요건 적합 여부", scope: "각급학교" },
+                            { no: "10", content: "명시이월 학교운영위원회 사전 심의 여부", scope: "각급학교" },
+                            { no: "11", content: "사고이월 사용요건 적합 여부", scope: "각급학교" },
+                            { no: "12", content: "예비비 사용 요건 및 사용의 적정성 여부", scope: "각급학교" },
+                            { no: "13", content: "예비비 편성 기준 적합 여부", scope: "각급학교" },
+                            { no: "14", content: "예비비의 사용 제한 준수 여부 (업무추진비 성격으로 사용 불가)", scope: "각급학교" },
+                            { no: "15", content: "결산서 작성(자료 첨부)적합 여부", scope: "각급학교" },
+                            { no: "16", content: "결산서 학교운영위원회 제출 및 심의 확정 준수 여부", scope: "각급학교" },
+                            { no: "17", content: "결산서 공개 기한 준수 여부", scope: "각급학교" }
                         ]
                     },
                     {
                         id: "7-2",
                         title: "세입",
                         items: [
-                            { no: "1", content: "교육비특별회계 세입금 징수결정 및 납부기한 준수, 독촉장 발행시기 준수 여부", scope: "각급학교" },
-                            { no: "2", content: "학교회계 세입금 징수결의 상세 세부내역 첨부 여부", scope: "각급학교" },
-                            { no: "3", content: "교육비특별회계 수납금의 금고납입 적정 및 학교회계 수입일계 처리 적정 여부", scope: "각급학교" },
-                            { no: "4", content: "수익자부담경비의 수납금 관리, 과오납반환 처리, 불납결손 처리, 미수납액 관리 적정 여부", scope: "각급학교" },
-                            { no: "5", content: "회계사고 예방차원의 학교 예금계좌(통장) 수 최소화 여부", scope: "각급학교" },
-                            { no: "6", content: "신용카드 포인트 세입 처리 여부 (30,000점 이상시 세입 조치)", scope: "각급학교" },
-                            { no: "7", content: "매월 1회 에듀파인 클린재정 점검 여부", scope: "각급학교" }
+                            { no: "1", content: "교육비특별회계 세입금 징수결정의 적정 여부", scope: "각급학교" },
+                            { no: "2", content: "교육비특별회계 세입금 납부기한 준수 여부", scope: "각급학교" },
+                            { no: "3", content: "학교회계 세입금 징수결의 상세 세부내역 첨부 여부", scope: "각급학교" },
+                            { no: "4", content: "교육비특별회계 세입금 독촉장 발행시기 및 납입기한 준수 여부", scope: "각급학교" },
+                            { no: "5", content: "교육비특별회계 수납금의 금고납입 적정 여부", scope: "각급학교" },
+                            { no: "6", content: "학교회계 수입일계 처리 적정 여부", scope: "각급학교" },
+                            { no: "7", content: "수익자부담경비의 수납금 관리 적정 여부", scope: "각급학교" },
+                            { no: "8", content: "과오납반환의 처리 적정 여부", scope: "각급학교" },
+                            { no: "9", content: "교육비특별회계 세입금 불납결손 처리 적정 여부", scope: "각급학교" },
+                            { no: "10", content: "교육비특별회계 세입금 미수납액 관리 적정 여부", scope: "각급학교" },
+                            { no: "11", content: "회계사고 예방차원의 학교 예금계좌(통장) 수 최소화 여부", scope: "각급학교" },
+                            { no: "12", content: "신용카드 포인트 세입 처리 여부 (30,000점 이상시 세입 조치)", scope: "각급학교" },
+                            { no: "13", content: "매월 1회 에듀파인 클린재정 점검 여부", scope: "각급학교" }
                         ]
                     },
                     {
                         id: "7-3",
                         title: "세출",
                         items: [
-                            { no: "1", content: "지출원인행위 학교장 결재 여부 및 회계관계공무원 직무대리 지정 적정성 여부", scope: "각급학교" },
-                            { no: "2", content: "목적사업비 전입금 집행 적정 여부", scope: "각급학교" },
-                            { no: "3", content: "일반/목적 업무추진비 편성한도 및 집행 적정 여부 (50만원 이상 시 참석자 명단 첨부)", scope: "각급학교" },
-                            { no: "4", content: "홍보물품 및 상품권 구매·사용방법 적정성 (관리대장 작성 여부)", scope: "각급학교" },
-                            { no: "5", content: "근무지내 여비 중복지급 확인 및 일비 감액 여부 (공용차량 이용시 일비 1/2 지급)", scope: "각급학교" },
-                            { no: "6", content: "신용카드 사용⋅관리 적정 여부 (확인서 제출, 매월 1회 이상 카드 사용내역 학교장 결재)", scope: "각급학교" },
-                            { no: "7", content: "지정처리정보장치에 의한 회계의 처리 및 관리 여부", scope: "각급학교" },
-                            { no: "8", content: "학교회계 출납검사 여부 (매월 1회 장부와 통장 잔액 일치 확인, 현금출납부 학교장 결재)", scope: "각급학교" },
-                            { no: "9", content: "학교재정 운영 공개의 적정성 (수익자부담 정산 10일 이내, 상품권·업추비·법인카드 사용내역 익월 10일까지 공개)", scope: "각급학교" },
-                            { no: "10", content: "회계관계직원의 재정보증 설정 여부 및 지출 증빙서류 매월 편철(순서 준수) 여부", scope: "각급학교" },
-                            { no: "11", content: "매월 1회 에듀파인 클린재정 점검 여부", scope: "각급학교" }
+                            { no: "1", content: "지출원인행위 학교장 결재 여부", scope: "각급학교" },
+                            { no: "2", content: "회계관계공무원 직무대리 지정 적정성 여부 (별도 내부결재 여부)", scope: "각급학교" },
+                            { no: "3", content: "목적사업비 전입금 집행 적정 여부", scope: "각급학교" },
+                            { no: "4", content: "일반업무추진비 편성한도 및 집행 적정 여부 (50만원 이상 집행시 참석자 명단 증빙서류 첨부)", scope: "각급학교" },
+                            { no: "5", content: "목적사업업무추진비 편성한도 및 집행 적정 여부", scope: "각급학교" },
+                            { no: "6", content: "홍보물품 및 상품권 구매 및 사용방법 적정 여부 (관리대장 작성 여부)", scope: "각급학교" },
+                            { no: "7", content: "근무지내 여비 중복지급 및 일비 감액 여부 (공용차량 이용시 일비 2분의 1을 지급)", scope: "각급학교" },
+                            { no: "8", content: "신용카드 사용·관리 적정 여부 (신용카드 사용 확인서 제출, 매월 1회 이상 카드 사용내역 학교장 결재 여부)", scope: "각급학교" },
+                            { no: "9", content: "지정처리정보장치에 의한 회계의 처리 및 관리 여부", scope: "각급학교" },
+                            { no: "10", content: "학교회계 출납검사 여부 (매월 1회 회계장부와 통장 잔액의 일치 여부 확인, 현금출납부 매월 1회 학교장 결재 여부)", scope: "각급학교" },
+                            { no: "11", content: "학교재정 운영 공개의 적정성 (수익자부담 종료 후 10일내 정산, 상품권 월 1회 공개, 업무추진비/법인카드 다음달 10일까지 공개 등)", scope: "각급학교" },
+                            { no: "12", content: "회계관계직원의 재정보증 설정 여부", scope: "각급학교" },
+                            { no: "13", content: "지출 증빙서류 매월 편철 여부 (편철 순서 준수)", scope: "각급학교" },
+                            { no: "14", content: "매월 1회 에듀파인 클린재정 점검 여부", scope: "각급학교" }
                         ]
                     },
                     {
@@ -1172,7 +1137,7 @@
                     },
                     {
                         id: "8-1",
-                        title: "학교급식 운영․관리",
+                        title: "학교급식 운영·관리",
                         items: [
                             { no: "1", content: "학교급식운영 계획의 매 학년도 시작 전(2월말)까지 학교운영위원회 심의 여부", scope: "각급학교" },
                             { no: "2", content: "학교급식소위원회 구성 및 운영 적정성, 우유급식 실시 관련 학운위 심의 여부", scope: "각급학교" },
@@ -1186,9 +1151,10 @@
                     }
                 ]
             }
+        }
         };
-
-        // 2. 현재 앱 상태 관리
+        
+// 2. 현재 앱 상태 관리
         let currentPeriod = 'first';
         let currentSector = 'academic';
         let currentCategoryIndex = 0;
@@ -1602,7 +1568,16 @@
           <tr class="hover:bg-slate-50/70 transition-all">
             <td class="p-3 font-mono text-center text-slate-400 text-xs">${item.no}</td>
             <td class="p-3 text-slate-700 font-medium leading-relaxed">
-              <div>${item.content}</div>
+              
+              <div class="group relative inline-block cursor-help w-full">
+                <span class="block truncate max-w-full text-slate-800 font-semibold">${
+                    item.content.includes('. ') 
+                    ? item.content.substring(0, item.content.indexOf('. ') + 1) 
+                    : item.content.split('\n')[0]
+                }</span>
+                <div class="invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all absolute left-0 bottom-full mb-2 w-max max-w-[400px] p-3 bg-slate-800 text-slate-100 text-xs rounded-lg shadow-xl z-50 whitespace-pre-wrap leading-relaxed">${item.content}</div>
+              </div>
+
               ${historyBadge}
             </td>
             <td class="p-3 text-center">
@@ -2076,4 +2051,7 @@
     </script>
 </body>
 
+</html>
+    </script>
+</body>
 </html>
