@@ -215,7 +215,15 @@
                     class="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-bold transition-all shadow-md flex items-center gap-2">
                     <i class="fa-solid fa-clock-rotate-left"></i>임시저장 복구
                 </button>
-                <button onclick="window.print()"
+                
+                <div class="relative group">
+                    <label for="hwpxUpload" class="cursor-pointer px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-bold transition-all shadow-md flex items-center gap-2">
+                        <i class="fa-solid fa-file-word"></i>HWPX 템플릿 연동
+                        <i id="hwpxLoading" class="fa-solid fa-spinner fa-spin ml-1" style="display:none;"></i>
+                    </label>
+                    <input type="file" id="hwpxUpload" accept=".hwpx" class="hidden" onchange="processHWPX(this)">
+                </div>
+<button onclick="window.print()"
                     class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold transition-all shadow-md flex items-center gap-2">
                     <i class="fa-solid fa-print"></i>A4 격자 표 인쇄 / PDF 저장
                 </button>
@@ -1853,6 +1861,66 @@
         }
 
         // 12. 공문서 스타일용 A4 인쇄 레이아웃 작성 (개인정보 성명/날짜 필터링)
+        
+        async function processHWPX(fileInput) {
+            if (!fileInput.files || fileInput.files.length === 0) return;
+            const file = fileInput.files[0];
+            
+            document.getElementById('hwpxLoading').style.display = 'inline-block';
+            
+            try {
+                const zip = new JSZip();
+                const loadedZip = await zip.loadAsync(file);
+                
+                const sectionFiles = Object.keys(loadedZip.files).filter(name => name.startsWith("Contents/section") && name.endsWith(".xml"));
+                
+                if (sectionFiles.length === 0) {
+                    alert("HWPX 본문 데이터를 찾을 수 없습니다.");
+                    return;
+                }
+                
+                for (const fileName of sectionFiles) {
+                    let xmlText = await loadedZip.file(fileName).async("string");
+                    
+                    if (userProgress[currentPeriod] && userProgress[currentPeriod][currentSector]) {
+                        const sectorData = userProgress[currentPeriod][currentSector];
+                        Object.keys(sectorData).forEach(catId => {
+                            const catObj = sectorData[catId];
+                            Object.keys(catObj).forEach(itemNo => {
+                                const state = catObj[itemNo];
+                                
+                                let resSymbol = " ";
+                                if (state.result === 'O') resSymbol = "○";
+                                else if (state.result === 'S') resSymbol = "△";
+                                else if (state.result === 'X') resSymbol = "×";
+                                else if (state.result === 'N') resSymbol = "-";
+                                
+                                const actionText = state.action ? state.action : " ";
+                                
+                                const resTag = `[[${catId}_${itemNo}_R]]`;
+                                const actTag = `[[${catId}_${itemNo}_A]]`;
+                                
+                                xmlText = xmlText.split(resTag).join(resSymbol);
+                                xmlText = xmlText.split(actTag).join(actionText);
+                            });
+                        });
+                    }
+                    
+                    loadedZip.file(fileName, xmlText);
+                }
+                
+                const blob = await loadedZip.generateAsync({type: "blob"});
+                saveAs(blob, "작성완료_" + file.name);
+                alert("HWPX 파일 변환 및 다운로드가 완료되었습니다!\n\n(주의: 만약 일부 칸이 치환되지 않았다면, HWPX 템플릿의 태그가 쪼개졌을 수 있습니다. 해당 칸은 메모장에서 태그를 작성해 복사/붙여넣기 해주세요.)");
+            } catch (e) {
+                console.error(e);
+                alert("HWPX 처리 중 오류가 발생했습니다: " + e.message);
+            } finally {
+                document.getElementById('hwpxLoading').style.display = 'none';
+                fileInput.value = "";
+            }
+        }
+
         function buildPrintTable() {
             const container = document.getElementById('printTableContainer');
             container.innerHTML = '';
