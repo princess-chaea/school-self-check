@@ -4,9 +4,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>자가진단 시스템</title>
+    <title>하주초등학교 자율 자가진단 시스템</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+
+        /* 인쇄 모드 전용 스타일 레이아웃 (개인정보 완벽 마스킹) */
+        @media print {
+            body {
+                background-color: #ffffff !important;
+                color: #000000 !important;
+                font-size: 11pt !important;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .print-area {
+                display: block !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            .print-table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                margin-top: 15px !important;
+            }
+
+            .print-table th,
+            .print-table td {
+                border: 1px solid #008000 !important;
+                padding: 6px 8px !important;
+                font-size: 10pt !important;
+                color: #000000 !important;
+            }
+
+            .print-table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                margin-top: 15px !important;
+                border: 2px solid #008000 !important;
+            }
+
+            .print-table th {
+                background-color: #eaffea !important;
+                font-weight: bold !important;
+                text-align: center !important;
+            }
+
+            .page-break {
+                page-break-before: always;
+            }
+
+            /* 인쇄물에서는 문항별 서명 배지(이름, 날짜)를 전면 숨김 처리 */
+            .item-badge {
+                display: none !important;
+            }
+        }
+    </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script>
 const HWPX_TEMPLATES = {
@@ -15,242 +80,270 @@ const HWPX_TEMPLATES = {
 };
 
 </script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
-        
-        body {
-            font-family: 'Noto Sans KR', sans-serif;
-            background-color: #f8fafc;
-        }
-        
-        /* Tooltip arrow */
-        .tooltip-arrow::after {
-            content: '';
-            position: absolute;
-            top: 100%;
-            left: 20px;
-            border-width: 5px;
-            border-style: solid;
-            border-color: #1e293b transparent transparent transparent;
-        }
-
-        /* Print Styles */
-        @media print {
-            body { background: white !important; }
-            .no-print { display: none !important; }
-            .print-only { display: block !important; }
-            table { page-break-inside: auto; }
-            tr { page-break-inside: avoid; page-break-after: auto; }
-            thead { display: table-header-group; }
-            tfoot { display: table-footer-group; }
-        }
-        
-        /* Custom scrollbar for sidebar */
-        .sidebar-scroll::-webkit-scrollbar {
-            width: 4px;
-        }
-        .sidebar-scroll::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        .sidebar-scroll::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,0.2);
-            border-radius: 4px;
-        }
-        .sidebar-scroll::-webkit-scrollbar-thumb:hover {
-            background: rgba(255,255,255,0.4);
-        }
-        
-        /* Main scrollbar */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        
-        /* Active Category Item in Sidebar */
-        .category-item.active {
-            background-color: white !important;
-            color: #4f46e5 !important; /* text-indigo-600 */
-        }
-        .category-item.active .text-indigo-300 {
-            color: #818cf8 !important; /* lighter indigo for subtitles when active */
-        }
-    </style>
 </head>
 
-<body class="text-slate-800 h-screen flex overflow-hidden">
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
 
-    <!-- Solid Blue Sidebar -->
-    <aside class="w-72 bg-indigo-600 border-r border-indigo-700 flex flex-col z-20 no-print flex-shrink-0">
-        <!-- Logo -->
-        <div class="h-16 flex items-center px-6 bg-indigo-700 text-white">
-            <i class="fa-solid fa-clipboard-check text-xl mr-3"></i>
-            <h1 class="text-lg font-bold tracking-wide">자가진단 시스템</h1>
-        </div>
-        
-        <!-- Toggles -->
-        <div class="p-4 border-b border-indigo-500/50 space-y-3">
-            <div class="flex bg-indigo-700/50 p-1 rounded">
-                <button id="btnPeriodFirst" onclick="switchPeriod('first')" class="flex-1 py-1.5 text-xs font-bold rounded bg-white text-indigo-600 transition-colors">상반기</button>
-                <button id="btnPeriodSecond" onclick="switchPeriod('second')" class="flex-1 py-1.5 text-xs font-semibold text-indigo-100 hover:text-white transition-colors">하반기</button>
-            </div>
-            <div class="flex bg-indigo-700/50 p-1 rounded">
-                <button id="btnAcademic" onclick="switchSector('academic')" class="flex-1 py-1.5 text-xs font-bold rounded bg-white text-indigo-600 transition-colors">학사분야</button>
-                <button id="btnFinance" onclick="switchSector('finance')" class="flex-1 py-1.5 text-xs font-semibold text-indigo-100 hover:text-white transition-colors">회계분야</button>
-            </div>
-        </div>
-        
-        <!-- Search -->
-        <div class="px-4 py-3 border-b border-indigo-500/50">
-            <div class="relative">
-                <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-indigo-300 text-xs"></i>
-                <input type="text" id="searchTerm" placeholder="카테고리 검색..." class="w-full bg-indigo-700/50 text-white placeholder-indigo-300 border-none rounded pl-8 pr-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-300 transition-colors" onkeyup="renderCategoryMenu()">
-            </div>
-        </div>
-        
-        <!-- Category Menu -->
-        <div class="flex-1 overflow-y-auto p-2 sidebar-scroll" id="categoryContainer">
-            <!-- Categories injected here -->
-        </div>
-        
-        <!-- Footer Info -->
-        <div class="p-3 bg-indigo-700/30 border-t border-indigo-500/50 text-xs text-indigo-200 font-medium flex justify-between items-center">
-            <span>총 카테고리</span>
-            <span id="catTotal" class="font-bold text-white bg-indigo-500/50 px-2 py-0.5 rounded-full">0</span>
-        </div>
-    </aside>
-
-    <!-- Main Content -->
-    <main class="flex-1 flex flex-col h-screen overflow-hidden bg-white relative">
-        <!-- Top Header -->
-        <header class="h-16 border-b border-slate-200 flex items-center justify-between px-6 z-10 no-print flex-shrink-0">
-            <div class="flex items-center gap-6">
-                <div class="flex items-center gap-2">
-                    <span class="text-[11px] font-bold text-slate-400">학교명</span>
-                    <input type="text" id="schoolName" class="border-b border-slate-200 focus:border-indigo-600 outline-none text-sm font-semibold text-slate-700 w-32 pb-0.5" placeholder="학교명 입력">
-                </div>
-                <div class="flex items-center gap-2">
-                    <span class="text-[11px] font-bold text-slate-400">점검자</span>
-                    <input type="text" id="inspectorName" class="border-b border-slate-200 focus:border-indigo-600 outline-none text-sm font-semibold text-slate-700 w-24 pb-0.5" placeholder="이름 입력">
-                </div>
-                <div class="flex items-center gap-2">
-                    <span class="text-[11px] font-bold text-slate-400">점검일자</span>
-                    <input type="date" id="inspectionDate" class="border-b border-slate-200 focus:border-indigo-600 outline-none text-sm font-semibold text-slate-700 w-36 pb-0.5 cursor-pointer">
-                </div>
-            </div>
-            
+    <!-- 대시보드 및 네비게이션 (no-print) -->
+    <header class="bg-blue-900 text-white shadow-lg no-print">
+        <div
+            class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
             <div class="flex items-center gap-3">
-                <div id="syncIndicator" class="text-[11px] font-semibold text-slate-500 flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 rounded">
-                    <i class="fa-solid fa-cloud"></i> 저장됨
+                <div class="bg-white text-blue-950 p-2.5 rounded-lg shadow">
+                    <i class="fa-solid fa-clipboard-check text-2xl"></i>
                 </div>
-                <button id="btnRestoreCache" onclick="restoreFromCache()" class="text-[11px] font-bold bg-amber-100 text-amber-700 px-3 py-1.5 rounded hover:bg-amber-200 transition-colors hidden">
-                    <i class="fa-solid fa-clock-rotate-left mr-1"></i> 임시저장 복구
-                </button>
-                <button onclick="printReport()" class="text-[11px] font-bold bg-white border border-slate-300 text-slate-700 px-3 py-1.5 rounded hover:bg-slate-50 transition-colors">
-                    <i class="fa-solid fa-print mr-1"></i> 출력
-                </button>
-                <button onclick="downloadHWPX()" class="text-[11px] font-bold bg-indigo-600 text-white px-3 py-1.5 rounded hover:bg-indigo-700 transition-colors flex items-center gap-1.5">
-                    <i class="fa-solid fa-file-word"></i> HWPX 다운로드
-                </button>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight">자율적 내부통제 자가진단 자율점검표</h1>
+                    <p class="text-xs text-blue-200 mt-0.5">하주초등학교 실시간 협업 수합 시스템</p>
+                </div>
             </div>
-        </header>
 
-        <!-- Main Workspace -->
-        <div class="flex-1 overflow-y-auto p-6 relative no-print">
-            
-            <!-- Dashboard Info -->
-            <div class="bg-white border border-slate-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] rounded-xl p-5 mb-6 flex justify-between items-center">
-                <div class="flex items-center gap-4">
-                    <div class="flex flex-col">
-                        <div class="flex items-center gap-2 mb-1">
-                            <span id="activeCatId" class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-xs font-bold font-mono"></span>
-                            <span id="catProgressText" class="text-slate-400 text-xs font-medium"><i class="fa-solid fa-chart-pie"></i> 진행 현황 로딩중...</span>
-                        </div>
-                        <h2 id="activeCatTitle" class="text-xl font-bold text-slate-800"></h2>
+            <!-- 실시간 개인 정보 스탬프용 데이터 입력창 (웹앱 내부 보존용) -->
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="bg-blue-950/50 px-3 py-1.5 rounded border border-blue-700 text-xs flex items-center gap-3">
+                    <div>
+                        <span class="text-blue-300 block">학교명</span>
+                        <input type="text" id="schoolName" value="하주초등학교"
+                            class="bg-transparent font-semibold focus:outline-none w-24 text-white">
+                    </div>
+                    <div class="border-l border-blue-700 h-6"></div>
+                    <div>
+                        <span class="text-blue-300 block">점검자명 (실명 기재)</span>
+                        <input type="text" id="inspectorName" placeholder="작성자 성명"
+                            class="bg-transparent font-semibold focus:outline-none w-24 text-white placeholder-blue-300 border-b border-blue-500 focus:border-white">
+                    </div>
+                    <div class="border-l border-blue-700 h-6"></div>
+                    <div>
+                        <span class="text-blue-300 block">점검일자</span>
+                        <input type="date" id="inspectionDate"
+                            class="bg-transparent font-semibold focus:outline-none w-28 text-white">
                     </div>
                 </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl mx-auto w-full px-4 py-6 sm:px-6 lg:px-8 flex flex-col gap-6 no-print">
+        <!-- 실시간 자동저장 상태바 알림 배너 -->
+        <div id="statusAlert"
+            class="bg-indigo-50 border-l-4 border-indigo-500 p-3 rounded text-xs text-indigo-900 flex justify-between items-center transition-all duration-300">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-cloud-arrow-up text-indigo-600 text-sm animate-pulse"></i>
+                <span>이 자가진단표는 구글 스프레드시트와 연동되어 <strong>체크 즉시 실시간으로 자동 저장</strong>됩니다.</span>
+            </div>
+            <span id="syncIndicator"
+                class="inline-flex items-center gap-1.5 bg-indigo-100 text-indigo-800 font-bold px-2.5 py-1 rounded-md">
+                <i class="fa-solid fa-rotate animate-spin text-[10px]"></i> 데이터 로드 중...
+            </span>
+        </div>
+
+        <!-- 대시보드 요약 정보 카드 -->
+        <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <span class="text-xs text-slate-500 font-medium block">전체 진행률</span>
+                    <span class="text-2xl font-bold text-slate-800 mt-1" id="progRate">0%</span>
+                    <span class="text-xs text-slate-400 block mt-1" id="progRatio">0 / 0 문항</span>
+                </div>
+                <div class="w-14 h-14 rounded-full border-4 border-slate-100 flex items-center justify-center relative">
+                    <div class="absolute inset-0 rounded-full border-4 border-blue-600 transition-all duration-300"
+                        id="progCircle" style="clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);"></div>
+                    <i class="fa-solid fa-tasks text-lg text-slate-400"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <span class="text-xs text-slate-500 font-medium block">이행 (○)</span>
+                    <span class="text-2xl font-bold text-green-600 mt-1" id="cntOk">0건</span>
+                    <span class="text-xs text-slate-400 block mt-1">완료 (조치계획 잠김)</span>
+                </div>
+                <div class="w-12 h-12 rounded-lg bg-green-50 flex items-center justify-center text-green-600">
+                    <i class="fa-solid fa-circle-check text-xl"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <span class="text-xs text-slate-500 font-medium block">미흡 (△)</span>
+                    <span class="text-2xl font-bold text-amber-500 mt-1" id="cntWarning">0건</span>
+                    <span class="text-xs text-slate-400 block mt-1">조치계획 작성 필수</span>
+                </div>
+                <div class="w-12 h-12 rounded-lg bg-amber-50 flex items-center justify-center text-amber-500">
+                    <i class="fa-solid fa-circle-minus text-xl"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <span class="text-xs text-slate-500 font-medium block">미이행 (×)</span>
+                    <span class="text-2xl font-bold text-red-500 mt-1" id="cntAlert">0건</span>
+                    <span class="text-xs text-slate-400 block mt-1">즉시조치 및 입력 필수</span>
+                </div>
+                <div class="w-12 h-12 rounded-lg bg-red-50 flex items-center justify-center text-red-500">
+                    <i class="fa-solid fa-circle-xmark text-xl"></i>
+                </div>
+            </div>
+        </section>
+
+        <!-- 분야 스위치 및 액션 툴바 -->
+        <div
+            class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <!-- 시기 및 분야 토글 -->
+            <div class="flex flex-wrap items-center gap-2">
+                <div class="inline-flex p-1 bg-slate-100 rounded-lg shrink-0">
+                    <button id="btnPeriodFirst" onclick="switchPeriod('first')"
+                        class="px-4 py-2 rounded-md font-semibold text-sm transition-all duration-200 bg-white text-indigo-900 shadow">
+                        상반기
+                    </button>
+                    <button id="btnPeriodSecond" onclick="switchPeriod('second')"
+                        class="px-4 py-2 rounded-md font-semibold text-sm transition-all duration-200 text-slate-600 hover:text-slate-900">
+                        하반기
+                    </button>
+                </div>
+                <div class="inline-flex p-1 bg-slate-100 rounded-lg shrink-0">
+                    <button id="btnAcademic" onclick="switchSector('academic')"
+                        class="px-5 py-2 rounded-md font-semibold text-sm transition-all duration-200 bg-white text-blue-900 shadow">
+                        <i class="fa-solid fa-graduation-cap mr-1.5"></i>학사분야 점검
+                    </button>
+                    <button id="btnFinance" onclick="switchSector('finance')"
+                        class="px-5 py-2 rounded-md font-semibold text-sm transition-all duration-200 text-slate-600 hover:text-slate-900">
+                        <i class="fa-solid fa-sack-dollar mr-1.5"></i>회계분야 점검
+                    </button>
+                </div>
+            </div>
+
+            <!-- 정갈한 서식 기반 인쇄 및 캐시 버튼 -->
+            <div class="flex items-center gap-3">
+                <button onclick="restoreLocalCache()" id="btnRestoreCache" style="display: none;"
+                    class="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-bold transition-all shadow-md flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left"></i>임시저장 복구
+                </button>
                 
-                <div class="flex items-center gap-8">
-                    <!-- Stats -->
-                    <div class="flex gap-6 text-center">
-                        <div>
-                            <div class="text-[10px] font-bold text-slate-400 mb-0.5">이행</div>
-                            <div id="cntOk" class="text-lg font-bold text-emerald-600">0</div>
-                        </div>
-                        <div>
-                            <div class="text-[10px] font-bold text-slate-400 mb-0.5">미흡</div>
-                            <div id="cntWarning" class="text-lg font-bold text-amber-500">0</div>
-                        </div>
-                        <div>
-                            <div class="text-[10px] font-bold text-slate-400 mb-0.5">미이행</div>
-                            <div id="cntAlert" class="text-lg font-bold text-rose-500">0</div>
-                        </div>
-                    </div>
-                    
-                    <!-- Progress Circle -->
-                    <div class="relative w-12 h-12 flex items-center justify-center">
-                        <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                            <path class="text-slate-100" stroke-width="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                            <path id="progCircle" class="text-indigo-600 transition-all duration-1000 ease-out" stroke-width="3" stroke-dasharray="0, 100" stroke="currentColor" fill="none" stroke-linecap="round" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                        </svg>
-                        <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <span id="progRate" class="text-[10px] font-bold text-slate-800 leading-none">0%</span>
-                            <span id="progRatio" class="text-[8px] text-slate-400 mt-0.5">0/0</span>
-                        </div>
-                    </div>
-                </div>
+                <button onclick="downloadHWPX()" id="btnDownloadHWPX"
+                    class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold transition-all shadow-md flex items-center gap-2">
+                    <i class="fa-solid fa-file-word"></i>한글(HWPX) 원본 다운로드
+                </button>
+                <button onclick="window.print()"
+                    class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold transition-all shadow-md flex items-center gap-2">
+                    <i class="fa-solid fa-print"></i>A4 격자 표 인쇄 / PDF 저장
+                </button>
             </div>
-            
-            <!-- Table Header Section -->
-            <div class="flex justify-between items-end mb-3 px-1">
-                <div class="flex items-center gap-2 text-sm font-bold text-slate-700">
-                    <i class="fa-solid fa-list-check text-indigo-500"></i> 점검 문항
-                </div>
-                <label class="flex items-center gap-2 text-[11px] font-semibold text-slate-600 cursor-pointer hover:text-indigo-600 transition-colors border border-slate-200 bg-white px-2.5 py-1.5 rounded shadow-sm">
-                    <input type="checkbox" id="chkOnlyWarning" class="rounded text-indigo-600 focus:ring-indigo-500 w-3 h-3" onchange="loadActiveCategoryItems()">
-                    미흡/미이행 문항만 보기
-                </label>
-            </div>
+        </div>
 
-            <!-- Table -->
-            <div class="bg-white border border-slate-200 rounded-lg shadow-sm">
-                <table class="w-full text-left border-collapse">
-                    <thead class="bg-slate-50 border-b border-slate-200">
-                        <tr>
-                            <th class="py-2.5 px-4 text-[11px] font-bold text-slate-500 w-12 text-center">NO</th>
-                            <th class="py-2.5 px-4 text-[11px] font-bold text-slate-500">점검 내용</th>
-                            <th class="py-2.5 px-4 text-[11px] font-bold text-slate-500 w-56 text-center">결과 판정</th>
-                            <th class="py-2.5 px-4 text-[11px] font-bold text-slate-500 w-72">미흡내용 및 조치계획</th>
-                            <th class="py-2.5 px-4 text-[11px] font-bold text-slate-500 w-20 text-center">적용대상</th>
-                        </tr>
-                    </thead>
-                    <tbody id="checklistTableBody">
-                        <!-- Items injected here -->
-                    </tbody>
-                </table>
-            </div>
-            
+        <!-- 좌우 2컬럼 레이아웃 -->
+        <div class="flex flex-col lg:flex-row gap-6">
+
+            <!-- 좌측 카테고리 네비게이터 -->
+            <aside class="w-full lg:w-80 flex-shrink-0 flex flex-col gap-4">
+                <!-- 필터 도구 -->
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                    <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2.5">검색 및 필터</h3>
+                    <div class="flex flex-col gap-2">
+                        <!-- 검색어 -->
+                        <div class="relative">
+                            <input type="text" id="searchTerm" oninput="applyFilters()" placeholder="진단 내용 검색..."
+                                class="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <i class="fa-solid fa-search absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
+                        </div>
+                        <!-- 학교 대상 범위 필터 -->
+                        <select id="filterScope" onchange="applyFilters()"
+                            class="w-full bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="all">학교급 전체보기</option>
+                            <option value="유">유치원만 보기</option>
+                            <option value="초">초등학교만 보기</option>
+                            <option value="초･중">초·중학교만 보기</option>
+                            <option value="중·고">중·고등학교만 보기</option>
+                            <option value="각급학교">공통(각급학교)만 보기</option>
+                        </select>
+                        <!-- 미흡항목만 필터 -->
+                        <label class="flex items-center gap-2 mt-1 cursor-pointer">
+                            <input type="checkbox" id="chkOnlyWarning" onchange="applyFilters()"
+                                class="rounded text-blue-600 focus:ring-blue-500 w-3.5 h-3.5">
+                            <span class="text-xs text-slate-600 select-none">미흡(△) 및 미이행(×)만 보기</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 세부 카테고리 목록 -->
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex-1">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider">세부 분야</h3>
+                        <span class="text-[10px] bg-slate-100 px-2 py-0.5 rounded-full text-slate-500 font-bold"
+                            id="catTotal">0개 구역</span>
+                    </div>
+                    <div id="categoryContainer" class="flex flex-col gap-1 max-h-[500px] overflow-y-auto pr-1">
+                        <!-- JS 동적 주입 -->
+                    </div>
+                </div>
+            </aside>
+
+            <!-- 우측 문항 입력 격자 테이블 -->
+            <section class="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                <div
+                    class="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center flex-wrap gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-1 rounded-md"
+                            id="activeCatId">1-1</span>
+                        <h2 class="text-base font-bold text-slate-800" id="activeCatTitle">공문서 관리</h2>
+                    </div>
+                    <span class="text-xs font-medium text-slate-500" id="catProgressText">진행률: 0/0 (0%)</span>
+                </div>
+
+                <div class="overflow-x-auto flex-1">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr
+                                class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                                <th class="py-3 px-4 w-12 text-center">번호</th>
+                                <th class="py-3 px-4">감사 자가진단 및 점검 내용</th>
+                                <th class="py-3 px-4 w-48 text-center">점검결과 (○, △, ×)</th>
+                                <th class="py-3 px-4 w-64">미흡/미이행 내용 및 조치사항</th>
+                                <th class="py-3 px-4 w-20 text-center">점검대상</th>
+                            </tr>
+                        </thead>
+                        <tbody id="checklistTableBody" class="divide-y divide-slate-100 text-sm">
+                            <!-- JS 동적 생성 -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
         </div>
     </main>
 
-    <!-- HWPX Loading Overlay -->
-    <div id="hwpxLoading" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex-col items-center justify-center">
-        <div class="bg-white p-6 rounded-xl shadow-2xl flex flex-col items-center max-w-sm w-full mx-4 border border-slate-100">
-            <div class="w-10 h-10 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
-            <h3 class="text-base font-bold text-slate-800 mb-1">HWPX 생성 중...</h3>
-            <p class="text-xs text-slate-500 text-center font-medium">데이터를 분석하여 보고서를 구성하고 있습니다.<br>잠시만 기다려주세요.</p>
+    <!-- 인쇄 전용 출력용 영역 (A4 규격, 날인 서명란 포함) -->
+    <div class="hidden print-area px-8 py-10" id="printSection">
+        <div class="text-center mb-6">
+            <h1 class="text-2xl font-bold border-b-2 border-double border-black pb-2 mb-2">
+                자율적 내부통제 운영 활성화를 위한 자가진단 자율점검표
+            </h1>
+            <div class="flex justify-between text-sm text-slate-700 mt-3 font-semibold">
+                <span id="printSchoolName">점검기관: 하주초등학교</span>
+                <span>자율적 내부통제 자율 자가진단표</span>
+            </div>
+        </div>
+
+        <div id="printTableContainer">
+            <!-- 동적 생성 테이블들이 여기에 삽입됩니다 -->
+        </div>
+
+        <!-- 인쇄용 서명 섹션 -->
+        <div class="mt-12 text-right text-sm font-semibold">
+            <p class="mb-2">위 점검 내용 및 미흡 사항에 대한 사후 이행 계획을 성실히 수행할 것을 확인합니다.</p>
+            <p class="mt-8">2026 년 &nbsp;&nbsp;&nbsp;&nbsp; 월 &nbsp;&nbsp;&nbsp;&nbsp; 일</p>
+            <p class="mt-4">하주초등학교 자율점검 책임관 :
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (서명)
+            </p>
         </div>
     </div>
 
-    <!-- Print Container (Hidden) -->
-    <div class="hidden print-only p-8 max-w-5xl mx-auto bg-white">
-        <div class="text-center mb-8 border-b-2 border-slate-800 pb-4">
-            <h1 class="text-3xl font-black text-slate-900 mb-2">자가진단 체크리스트 결과 보고서</h1>
-            <p class="text-lg font-bold text-slate-600" id="printSchoolName"></p>
-        </div>
-        <div id="printTableContainer"></div>
-    </div>
+    <footer class="bg-slate-100 border-t border-slate-200 py-6 mt-12 text-center text-xs text-slate-400 no-print">
+        <p>© 2026 자율적 내부통제 자가진단 도구. 하주초등학교 학사·회계 관리 자율점검시스템.</p>
+        <p class="mt-1 text-[10px]">본 시스템은 경상북도교육청 자율 감사 지침 및 자가진단표 문항을 기반으로 구현되었습니다.</p>
+    </footer>
 
-    <!-- Script Block -->
+    <!-- 스크립트 로직 제어 -->
     <script>
 const checklistDatabase = {
             academic: {
@@ -2081,10 +2174,4 @@ const checklistDatabase = {
     </script>
 </body>
 
-</html>
-    </script>
-</body>
-</html>
-    </script>
-</body>
 </html>
