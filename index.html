@@ -1341,8 +1341,14 @@
                     if (response.success && response.data) {
                         response.data.forEach(row => {
                             const p = row.period || 'first';
-                            if (userProgress[p] && userProgress[p][row.sector] && userProgress[p][row.sector][row.catId] && userProgress[p][row.sector][row.catId][row.itemNo]) {
-                                userProgress[p][row.sector][row.catId][row.itemNo] = {
+                            const actualCatId = row.catId ? row.catId.split(' ')[0] : row.catId;
+                            
+                            if (userProgress[p] && 
+                                userProgress[p][row.sector] && 
+                                userProgress[p][row.sector][actualCatId] && 
+                                userProgress[p][row.sector][actualCatId][row.itemNo]) {
+                                
+                                userProgress[p][row.sector][actualCatId][row.itemNo] = {
                                     result: row.result,
                                     action: row.action,
                                     inspector: row.inspector,
