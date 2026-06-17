@@ -4,22 +4,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>학교 자율 자가진단 시스템</title>
+    <title>자가진단 시스템</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="./templates.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
         
         body {
             font-family: 'Noto Sans KR', sans-serif;
-            background-color: #f1f5f9;
+            background-color: #f8fafc;
         }
         
-        .item-badge {
-            display: inline-flex;
-            align-items: center;
+        /* Tooltip arrow */
+        .tooltip-arrow::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 20px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #1e293b transparent transparent transparent;
         }
-        
+
         /* Print Styles */
         @media print {
             body { background: white !important; }
@@ -31,182 +39,199 @@
             tfoot { display: table-footer-group; }
         }
         
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
+        /* Custom scrollbar for sidebar */
+        .sidebar-scroll::-webkit-scrollbar {
+            width: 4px;
         }
-        ::-webkit-scrollbar-track {
+        .sidebar-scroll::-webkit-scrollbar-track {
             background: transparent;
         }
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 10px;
+        .sidebar-scroll::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
         }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
+        .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.4);
+        }
+        
+        /* Main scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Active Category Item in Sidebar */
+        .category-item.active {
+            background-color: white !important;
+            color: #4f46e5 !important; /* text-indigo-600 */
+        }
+        .category-item.active .text-indigo-300 {
+            color: #818cf8 !important; /* lighter indigo for subtitles when active */
         }
     </style>
 </head>
 
-<body class="text-slate-800 h-screen flex overflow-hidden selection:bg-indigo-100 selection:text-indigo-900">
+<body class="text-slate-800 h-screen flex overflow-hidden">
 
-    <!-- Sidebar -->
-    <aside class="w-72 bg-white border-r border-slate-200 flex flex-col shadow-sm z-20 no-print relative">
-        <!-- Logo Area -->
-        <div class="h-16 flex items-center px-6 border-b border-slate-100 bg-gradient-to-r from-indigo-600 to-blue-700 text-white">
-            <i class="fa-solid fa-clipboard-check text-xl mr-3 opacity-90"></i>
-            <h1 class="text-lg font-bold tracking-tight">자가진단 시스템</h1>
+    <!-- Solid Blue Sidebar -->
+    <aside class="w-72 bg-indigo-600 border-r border-indigo-700 flex flex-col z-20 no-print flex-shrink-0">
+        <!-- Logo -->
+        <div class="h-16 flex items-center px-6 bg-indigo-700 text-white">
+            <i class="fa-solid fa-clipboard-check text-xl mr-3"></i>
+            <h1 class="text-lg font-bold tracking-wide">자가진단 시스템</h1>
         </div>
         
-        <!-- Period & Sector Toggles -->
-        <div class="p-4 border-b border-slate-100 bg-slate-50/50">
-            <div class="flex bg-slate-200 p-1 rounded-lg mb-3">
-                <button id="btnPeriodFirst" onclick="setPeriod('first')" class="flex-1 py-1.5 text-xs font-bold rounded-md bg-white text-indigo-700 shadow-sm transition-all">상반기</button>
-                <button id="btnPeriodSecond" onclick="setPeriod('second')" class="flex-1 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-700 transition-all">하반기</button>
+        <!-- Toggles -->
+        <div class="p-4 border-b border-indigo-500/50 space-y-3">
+            <div class="flex bg-indigo-700/50 p-1 rounded">
+                <button id="btnPeriodFirst" onclick="setPeriod('first')" class="flex-1 py-1.5 text-xs font-bold rounded bg-white text-indigo-600 transition-colors">상반기</button>
+                <button id="btnPeriodSecond" onclick="setPeriod('second')" class="flex-1 py-1.5 text-xs font-semibold text-indigo-100 hover:text-white transition-colors">하반기</button>
             </div>
-            <div class="flex bg-slate-200 p-1 rounded-lg">
-                <button id="btnAcademic" onclick="setSector('academic')" class="flex-1 py-1.5 text-xs font-bold rounded-md bg-white text-indigo-700 shadow-sm transition-all">학사분야</button>
-                <button id="btnFinance" onclick="setSector('finance')" class="flex-1 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-700 transition-all">회계분야</button>
+            <div class="flex bg-indigo-700/50 p-1 rounded">
+                <button id="btnAcademic" onclick="setSector('academic')" class="flex-1 py-1.5 text-xs font-bold rounded bg-white text-indigo-600 transition-colors">학사분야</button>
+                <button id="btnFinance" onclick="setSector('finance')" class="flex-1 py-1.5 text-xs font-semibold text-indigo-100 hover:text-white transition-colors">회계분야</button>
             </div>
         </div>
         
         <!-- Search -->
-        <div class="px-4 py-3 border-b border-slate-100">
+        <div class="px-4 py-3 border-b border-indigo-500/50">
             <div class="relative">
-                <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                <input type="text" id="searchTerm" placeholder="카테고리 검색..." class="w-full bg-slate-100 border-none rounded-lg pl-8 pr-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500 transition-all outline-none" onkeyup="renderCategoryMenu()">
+                <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-indigo-300 text-xs"></i>
+                <input type="text" id="searchTerm" placeholder="카테고리 검색..." class="w-full bg-indigo-700/50 text-white placeholder-indigo-300 border-none rounded pl-8 pr-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-300 transition-colors" onkeyup="renderCategoryMenu()">
             </div>
         </div>
         
         <!-- Category Menu -->
-        <div class="flex-1 overflow-y-auto p-3" id="categoryContainer">
-            <!-- Categories will be injected here -->
+        <div class="flex-1 overflow-y-auto p-2 sidebar-scroll" id="categoryContainer">
+            <!-- Categories injected here -->
         </div>
         
-        <div class="p-3 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 font-medium flex justify-between">
+        <!-- Footer Info -->
+        <div class="p-3 bg-indigo-700/30 border-t border-indigo-500/50 text-xs text-indigo-200 font-medium flex justify-between items-center">
             <span>총 카테고리</span>
-            <span id="catTotal" class="font-bold text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-full">0</span>
+            <span id="catTotal" class="font-bold text-white bg-indigo-500/50 px-2 py-0.5 rounded-full">0</span>
         </div>
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 flex flex-col h-screen overflow-hidden bg-slate-50 relative">
+    <main class="flex-1 flex flex-col h-screen overflow-hidden bg-white relative">
         <!-- Top Header -->
-        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 z-10 no-print shadow-sm">
+        <header class="h-16 border-b border-slate-200 flex items-center justify-between px-6 z-10 no-print flex-shrink-0">
             <div class="flex items-center gap-6">
                 <div class="flex items-center gap-2">
-                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">학교명</span>
-                    <input type="text" id="schoolName" class="border-b border-slate-300 focus:border-indigo-600 outline-none text-sm font-bold text-slate-800 w-32 pb-0.5 bg-transparent transition-colors" placeholder="학교명 입력">
+                    <span class="text-[11px] font-bold text-slate-400">학교명</span>
+                    <input type="text" id="schoolName" class="border-b border-slate-200 focus:border-indigo-600 outline-none text-sm font-semibold text-slate-700 w-32 pb-0.5" placeholder="학교명 입력">
                 </div>
                 <div class="flex items-center gap-2">
-                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">점검자</span>
-                    <input type="text" id="inspectorName" class="border-b border-slate-300 focus:border-indigo-600 outline-none text-sm font-bold text-slate-800 w-24 pb-0.5 bg-transparent transition-colors" placeholder="이름 입력">
+                    <span class="text-[11px] font-bold text-slate-400">점검자</span>
+                    <input type="text" id="inspectorName" class="border-b border-slate-200 focus:border-indigo-600 outline-none text-sm font-semibold text-slate-700 w-24 pb-0.5" placeholder="이름 입력">
                 </div>
                 <div class="flex items-center gap-2">
-                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">점검일자</span>
-                    <input type="date" id="inspectionDate" class="border-b border-slate-300 focus:border-indigo-600 outline-none text-sm font-bold text-slate-800 w-36 pb-0.5 bg-transparent transition-colors cursor-pointer">
+                    <span class="text-[11px] font-bold text-slate-400">점검일자</span>
+                    <input type="date" id="inspectionDate" class="border-b border-slate-200 focus:border-indigo-600 outline-none text-sm font-semibold text-slate-700 w-36 pb-0.5 cursor-pointer">
                 </div>
             </div>
             
-            <div class="flex items-center gap-4">
-                <div id="syncIndicator" class="text-xs font-medium text-slate-400 flex items-center gap-1.5 px-3 py-1 bg-slate-100 rounded-full">
+            <div class="flex items-center gap-3">
+                <div id="syncIndicator" class="text-[11px] font-semibold text-slate-500 flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 rounded">
                     <i class="fa-solid fa-cloud"></i> 저장됨
                 </div>
-                <button id="btnRestoreCache" onclick="restoreFromCache()" class="text-xs font-bold bg-amber-100 text-amber-700 px-3 py-1.5 rounded-lg hover:bg-amber-200 transition-colors hidden">
+                <button id="btnRestoreCache" onclick="restoreFromCache()" class="text-[11px] font-bold bg-amber-100 text-amber-700 px-3 py-1.5 rounded hover:bg-amber-200 transition-colors hidden">
                     <i class="fa-solid fa-clock-rotate-left mr-1"></i> 임시저장 복구
                 </button>
-                <button onclick="printReport()" class="text-xs font-bold bg-white border border-slate-300 text-slate-700 px-4 py-1.5 rounded-lg hover:bg-slate-50 hover:text-indigo-600 transition-colors shadow-sm">
+                <button onclick="printReport()" class="text-[11px] font-bold bg-white border border-slate-300 text-slate-700 px-3 py-1.5 rounded hover:bg-slate-50 transition-colors">
                     <i class="fa-solid fa-print mr-1"></i> 출력
                 </button>
-                <button onclick="downloadHWPX()" class="text-xs font-bold bg-indigo-600 text-white px-4 py-1.5 rounded-lg hover:bg-indigo-700 shadow-md transition-colors flex items-center gap-1.5">
+                <button onclick="downloadHWPX()" class="text-[11px] font-bold bg-indigo-600 text-white px-3 py-1.5 rounded hover:bg-indigo-700 transition-colors flex items-center gap-1.5">
                     <i class="fa-solid fa-file-word"></i> HWPX 다운로드
                 </button>
             </div>
         </header>
 
         <!-- Main Workspace -->
-        <div class="flex-1 overflow-y-auto p-8 relative no-print">
-            <!-- Dashboard Widget -->
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8 flex justify-between items-center bg-gradient-to-br from-white to-slate-50">
-                <div>
-                    <h2 class="text-2xl font-extrabold text-slate-800 flex items-center gap-3">
-                        <span id="activeCatId" class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-lg text-lg font-black tracking-tight border border-indigo-200 shadow-sm"></span>
-                        <span id="activeCatTitle"></span>
-                    </h2>
-                    <p id="catProgressText" class="text-slate-500 text-sm mt-2 font-medium flex items-center gap-2">
-                        <i class="fa-solid fa-chart-pie text-slate-400"></i> 진행 현황 로딩중...
-                    </p>
+        <div class="flex-1 overflow-y-auto p-6 relative no-print">
+            
+            <!-- Dashboard Info -->
+            <div class="bg-white border border-slate-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] rounded-xl p-5 mb-6 flex justify-between items-center">
+                <div class="flex items-center gap-4">
+                    <div class="flex flex-col">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span id="activeCatId" class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-xs font-bold font-mono"></span>
+                            <span id="catProgressText" class="text-slate-400 text-xs font-medium"><i class="fa-solid fa-chart-pie"></i> 진행 현황 로딩중...</span>
+                        </div>
+                        <h2 id="activeCatTitle" class="text-xl font-bold text-slate-800"></h2>
+                    </div>
                 </div>
                 
                 <div class="flex items-center gap-8">
-                    <!-- Stats Blocks -->
-                    <div class="flex gap-4">
-                        <div class="text-center px-4 border-r border-slate-200">
-                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">이행</div>
-                            <div id="cntOk" class="text-xl font-black text-emerald-600">0</div>
+                    <!-- Stats -->
+                    <div class="flex gap-6 text-center">
+                        <div>
+                            <div class="text-[10px] font-bold text-slate-400 mb-0.5">이행</div>
+                            <div id="cntOk" class="text-lg font-bold text-emerald-600">0</div>
                         </div>
-                        <div class="text-center px-4 border-r border-slate-200">
-                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">미흡</div>
-                            <div id="cntWarning" class="text-xl font-black text-amber-500">0</div>
+                        <div>
+                            <div class="text-[10px] font-bold text-slate-400 mb-0.5">미흡</div>
+                            <div id="cntWarning" class="text-lg font-bold text-amber-500">0</div>
                         </div>
-                        <div class="text-center px-4">
-                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">미이행</div>
-                            <div id="cntAlert" class="text-xl font-black text-rose-500">0</div>
+                        <div>
+                            <div class="text-[10px] font-bold text-slate-400 mb-0.5">미이행</div>
+                            <div id="cntAlert" class="text-lg font-bold text-rose-500">0</div>
                         </div>
                     </div>
                     
                     <!-- Progress Circle -->
-                    <div class="relative w-16 h-16 flex items-center justify-center">
+                    <div class="relative w-12 h-12 flex items-center justify-center">
                         <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                            <path class="text-slate-100" stroke-width="4" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                            <path id="progCircle" class="text-indigo-600 transition-all duration-1000 ease-out" stroke-width="4" stroke-dasharray="0, 100" stroke="currentColor" fill="none" stroke-linecap="round" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            <path class="text-slate-100" stroke-width="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            <path id="progCircle" class="text-indigo-600 transition-all duration-1000 ease-out" stroke-width="3" stroke-dasharray="0, 100" stroke="currentColor" fill="none" stroke-linecap="round" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
                         </svg>
                         <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <span id="progRate" class="text-sm font-black text-slate-800 leading-none">0%</span>
-                            <span id="progRatio" class="text-[9px] font-bold text-slate-400 mt-0.5">0/0</span>
+                            <span id="progRate" class="text-[10px] font-bold text-slate-800 leading-none">0%</span>
+                            <span id="progRatio" class="text-[8px] text-slate-400 mt-0.5">0/0</span>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <!-- Controls -->
-            <div class="flex justify-between items-center mb-4">
-                <div class="flex items-center gap-2 text-sm font-semibold text-slate-600">
+            <!-- Table Header Section -->
+            <div class="flex justify-between items-end mb-3 px-1">
+                <div class="flex items-center gap-2 text-sm font-bold text-slate-700">
                     <i class="fa-solid fa-list-check text-indigo-500"></i> 점검 문항
                 </div>
-                <label class="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer hover:text-indigo-600 transition-colors bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm">
-                    <input type="checkbox" id="chkOnlyWarning" class="rounded text-indigo-600 focus:ring-indigo-500" onchange="loadActiveCategoryItems()">
+                <label class="flex items-center gap-2 text-[11px] font-semibold text-slate-600 cursor-pointer hover:text-indigo-600 transition-colors border border-slate-200 bg-white px-2.5 py-1.5 rounded shadow-sm">
+                    <input type="checkbox" id="chkOnlyWarning" class="rounded text-indigo-600 focus:ring-indigo-500 w-3 h-3" onchange="loadActiveCategoryItems()">
                     미흡/미이행 문항만 보기
                 </label>
             </div>
 
             <!-- Table -->
-            <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+            <div class="bg-white border border-slate-200 rounded-lg shadow-sm">
                 <table class="w-full text-left border-collapse">
                     <thead class="bg-slate-50 border-b border-slate-200">
                         <tr>
-                            <th class="p-3 text-xs font-bold text-slate-500 uppercase w-12 text-center">No</th>
-                            <th class="p-3 text-xs font-bold text-slate-500 uppercase">점검 내용</th>
-                            <th class="p-3 text-xs font-bold text-slate-500 uppercase w-48 text-center">결과 판정</th>
-                            <th class="p-3 text-xs font-bold text-slate-500 uppercase w-72">미흡내용 및 조치계획</th>
-                            <th class="p-3 text-xs font-bold text-slate-500 uppercase w-20 text-center">적용대상</th>
+                            <th class="py-2.5 px-4 text-[11px] font-bold text-slate-500 w-12 text-center">NO</th>
+                            <th class="py-2.5 px-4 text-[11px] font-bold text-slate-500">점검 내용</th>
+                            <th class="py-2.5 px-4 text-[11px] font-bold text-slate-500 w-56 text-center">결과 판정</th>
+                            <th class="py-2.5 px-4 text-[11px] font-bold text-slate-500 w-72">미흡내용 및 조치계획</th>
+                            <th class="py-2.5 px-4 text-[11px] font-bold text-slate-500 w-20 text-center">적용대상</th>
                         </tr>
                     </thead>
-                    <tbody id="checklistTableBody" class="divide-y divide-slate-100">
-                        <!-- Items will be injected here -->
+                    <tbody id="checklistTableBody">
+                        <!-- Items injected here -->
                     </tbody>
                 </table>
             </div>
+            
         </div>
     </main>
 
     <!-- HWPX Loading Overlay -->
     <div id="hwpxLoading" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex-col items-center justify-center">
-        <div class="bg-white p-6 rounded-2xl shadow-2xl flex flex-col items-center max-w-sm w-full mx-4 border border-slate-100">
-            <div class="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
-            <h3 class="text-lg font-bold text-slate-800 mb-1">HWPX 생성 중...</h3>
-            <p class="text-sm text-slate-500 text-center font-medium">데이터를 분석하여 보고서를 구성하고 있습니다.<br>잠시만 기다려주세요.</p>
+        <div class="bg-white p-6 rounded-xl shadow-2xl flex flex-col items-center max-w-sm w-full mx-4 border border-slate-100">
+            <div class="w-10 h-10 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+            <h3 class="text-base font-bold text-slate-800 mb-1">HWPX 생성 중...</h3>
+            <p class="text-xs text-slate-500 text-center font-medium">데이터를 분석하여 보고서를 구성하고 있습니다.<br>잠시만 기다려주세요.</p>
         </div>
     </div>
 
@@ -219,9 +244,9 @@
         <div id="printTableContainer"></div>
     </div>
 
-    <!-- DB & Logic -->
+    <!-- Script Block -->
     <script>
-        const checklistDatabase = {
+const checklistDatabase = {
             academic: {
                 title: "학사분야 자가진단",
                 categories: [
@@ -1565,9 +1590,9 @@
                 }
 
                 const rowHtml = `
-          <tr class="hover:bg-slate-50/70 transition-all">
-            <td class="p-3 font-mono text-center text-slate-400 text-xs">${item.no}</td>
-            <td class="p-3 text-slate-700 font-medium leading-relaxed">
+          <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+            <td class="py-3 px-4 font-mono text-center text-slate-400 text-xs">${item.no}</td>
+            <td class="py-3 px-4 text-slate-700 font-medium leading-relaxed">
               
               <div class="group relative inline-block cursor-help w-full">
                 <span class="block truncate max-w-full text-slate-800 font-semibold">${
@@ -1580,14 +1605,14 @@
 
               ${historyBadge}
             </td>
-            <td class="p-3 text-center">
-              <div class="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-100 gap-1 shadow-inner">
-                <button onclick="setItemResult('${activeCat.id}', '${item.no}', 'O')" class="whitespace-nowrap px-2.5 py-1.5 rounded-md text-xs font-bold border transition-all ${btnOClass}">○ 이행</button>
-                <button onclick="setItemResult('${activeCat.id}', '${item.no}', 'S')" class="whitespace-nowrap px-2.5 py-1.5 rounded-md text-xs font-bold border transition-all ${btnSClass}">△ 미흡</button>
-                <button onclick="setItemResult('${activeCat.id}', '${item.no}', 'X')" class="whitespace-nowrap px-2.5 py-1.5 rounded-md text-xs font-bold border transition-all ${btnXClass}">× 미이행</button>
+            <td class="py-3 px-4 text-center">
+              <div class="inline-flex gap-1">
+                <button onclick="setItemResult('${activeCat.id}', '${item.no}', 'O')" class="px-3 py-1.5 rounded text-[11px] font-bold border transition-colors ${btnOClass}">○ 이행</button>
+                <button onclick="setItemResult('${activeCat.id}', '${item.no}', 'S')" class="px-3 py-1.5 rounded text-[11px] font-bold border transition-colors ${btnSClass}">△ 미흡</button>
+                <button onclick="setItemResult('${activeCat.id}', '${item.no}', 'X')" class="px-3 py-1.5 rounded text-[11px] font-bold border transition-colors ${btnXClass}">× 미이행</button>
               </div>
             </td>
-            <td class="p-3">
+            <td class="py-3 px-4">
               <input type="text" 
                      id="input-${activeCat.id}-${item.no}"
                      value="${action}" 
@@ -1595,9 +1620,9 @@
                      onblur="setItemAction('${activeCat.id}', '${item.no}', this.value)" 
                      onkeydown="if(event.key === 'Enter'){this.blur();}"
                      placeholder="${isActionDisabled ? '점검 결과 입력 시 활성화' : '미흡 사항 내용 및 조치 계획 입력'}" 
-                     class="w-full bg-slate-50 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed hover:bg-white focus:bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs transition-all focus:outline-none focus:ring-1 focus:ring-blue-500">
+                     class="w-full bg-transparent disabled:bg-transparent disabled:text-slate-400 hover:bg-slate-50 focus:bg-white border-b border-transparent focus:border-indigo-400 px-2 py-1.5 text-xs transition-colors outline-none">
             </td>
-            <td class="p-3 text-center">
+            <td class="py-3 px-4 text-center">
               <span class="inline-block bg-slate-100 text-slate-600 font-bold text-[10px] px-2 py-0.5 rounded-full">${item.scope}</span>
             </td>
           </tr>
@@ -2051,6 +2076,9 @@
     </script>
 </body>
 
+</html>
+    </script>
+</body>
 </html>
     </script>
 </body>
