@@ -76,6 +76,7 @@
     <!-- JSZip for HWPX processing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="templates.js"></script>
 </head>
 
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
@@ -217,11 +218,10 @@
                 </button>
                 
                 <div class="relative group">
-                    <label for="hwpxUpload" class="cursor-pointer px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-bold transition-all shadow-md flex items-center gap-2">
-                        <i class="fa-solid fa-file-word"></i>HWPX 템플릿 연동
+                    <button onclick="downloadHWPX()" class="cursor-pointer px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-bold transition-all shadow-md flex items-center gap-2">
+                        <i class="fa-solid fa-file-word"></i>HWPX 자동 다운로드
                         <i id="hwpxLoading" class="fa-solid fa-spinner fa-spin ml-1" style="display:none;"></i>
-                    </label>
-                    <input type="file" id="hwpxUpload" accept=".hwpx" class="hidden" onchange="processHWPX(this)">
+                    </button>
                 </div>
 <button onclick="window.print()"
                     class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold transition-all shadow-md flex items-center gap-2">
@@ -581,7 +581,9 @@
                             { no: "2", content: "학기 초(3월, 9월) 생명존중 마음건강 교육 운영 여부", scope: "각급학교" },
                             { no: "3", content: "학생정서행동특성검사를 통한 자살징후 조기발견 노력 및 대상 학생(관심군)에 대한 대응 및 조치의 적정성 여부", scope: "각급학교" },
                             { no: "4", content: "전교원의 학생자살예방관련 연수 의무적 실시 여부(연 1회 이상)", scope: "각급학교" },
-                            { no: "5", content: "(자살사안 발생 학교) 위기관리위원회 구성 및 개최 여부, 보고 절차 준수 여부, 사후 대응 노력 여부", scope: "각급학교" }
+                            { no: "5", content: "《자살사안 발생 학교》 위기관리위원회 구성 및 개최 여부", scope: "각급학교" },
+                            { no: "6", content: "《자살사안 발생 학교》 보고 절차 준수 여부", scope: "각급학교" },
+                            { no: "7", content: "《자살사안 발생 학교》 사후 대응 노력 여부(Wee센터, 전문기관 학교방문 '생명사랑센터' 위기개입 지원 요청 또는 실적 유무, 검사·치료비 지원 안내 유무)", scope: "각급학교" }
                         ]
                     },
                     {
@@ -1366,62 +1368,6 @@
                         renderCategoryMenu();
                         updateDashboardStats();
                         setSyncStatus('ready', '시트 연동 및 로드 완료');
-                    } else {
-                        setSyncStatus('ready', '서버 데이터가 비어있음 (새 시트)');
-                    }
-                })
-                .catch(err => {
-                    setSyncStatus('error', '데이터 연동 오류: ' + err.toString());
-                });
-        }
-
-        /**
-         * 상태등 배지 변경 유틸
-         */
-        function setSyncStatus(status, text) {
-            const el = document.getElementById('syncIndicator');
-            if (!el) return;
-
-            let icon = '';
-            let colorClass = '';
-
-            switch (status) {
-                case 'loading':
-                    icon = '<i class="fa-solid fa-rotate animate-spin text-[10px]"></i>';
-                    colorClass = 'bg-blue-100 text-blue-800';
-                    break;
-                case 'saving':
-                    icon = '<i class="fa-solid fa-cloud-arrow-up animate-bounce text-[10px]"></i>';
-                    colorClass = 'bg-amber-100 text-amber-800';
-                    break;
-                case 'ready':
-                    icon = '<i class="fa-solid fa-cloud-check text-green-600 text-[10px]"></i>';
-                    colorClass = 'bg-green-100 text-green-800';
-                    break;
-                case 'error':
-                    icon = '<i class="fa-solid fa-triangle-exclamation text-red-600 text-[10px]"></i>';
-                    colorClass = 'bg-red-100 text-red-800';
-                    break;
-                case 'offline':
-                    icon = '<i class="fa-solid fa-plug-circle-xmark text-slate-500 text-[10px]"></i>';
-                    colorClass = 'bg-slate-100 text-slate-700';
-                    break;
-            }
-
-            el.className = `inline-flex items-center gap-1.5 font-bold px-2.5 py-1 rounded-md ${colorClass} transition-all duration-200`;
-            el.innerHTML = `${icon} ${text}`;
-        }
-
-        // 상/하반기 전환 탭 제어
-        function switchPeriod(period) {
-            currentPeriod = period;
-            
-            const btn1 = document.getElementById('btnPeriodFirst');
-            const btn2 = document.getElementById('btnPeriodSecond');
-            
-            if (period === 'first') {
-                btn1.className = "px-4 py-2 rounded-md font-semibold text-sm transition-all duration-200 bg-white text-indigo-900 shadow";
-                btn2.className = "px-4 py-2 rounded-md font-semibold text-sm transition-all duration-200 text-slate-600 hover:text-slate-900";
             } else {
                 btn2.className = "px-4 py-2 rounded-md font-semibold text-sm transition-all duration-200 bg-white text-indigo-900 shadow";
                 btn1.className = "px-4 py-2 rounded-md font-semibold text-sm transition-all duration-200 text-slate-600 hover:text-slate-900";
@@ -1896,16 +1842,29 @@
 
         // 12. 공문서 스타일용 A4 인쇄 레이아웃 작성 (개인정보 성명/날짜 필터링)
         
-        async function processHWPX(fileInput) {
-            if (!fileInput.files || fileInput.files.length === 0) return;
-            const file = fileInput.files[0];
+        function base64ToUint8Array(base64) {
+            var binaryString = window.atob(base64);
+            var bytes = new Uint8Array(binaryString.length);
+            for (var i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes;
+        }
+
+        async function downloadHWPX() {
+            if (typeof HWPX_TEMPLATES === 'undefined' || !HWPX_TEMPLATES[currentSector]) {
+                alert("내장된 템플릿을 찾을 수 없습니다.");
+                return;
+            }
             
             document.getElementById('hwpxLoading').style.display = 'inline-block';
             
             try {
-                const zip = new JSZip();
-                const loadedZip = await zip.loadAsync(file);
+                const b64 = HWPX_TEMPLATES[currentSector];
+                const uint8 = base64ToUint8Array(b64);
                 
+                const zip = new JSZip();
+                const loadedZip = await zip.loadAsync(uint8);
                 const sectionFiles = Object.keys(loadedZip.files).filter(name => name.startsWith("Contents/section") && name.endsWith(".xml"));
                 
                 if (sectionFiles.length === 0) {
@@ -1934,8 +1893,20 @@
                                 const resTag = `[[${catId}_${itemNo}_R]]`;
                                 const actTag = `[[${catId}_${itemNo}_A]]`;
                                 
-                                xmlText = xmlText.split(resTag).join(resSymbol);
-                                xmlText = xmlText.split(actTag).join(actionText);
+                                const escapeXml = (unsafe) => {
+                                    return unsafe.replace(/[<>&'"]/g, function (c) {
+                                        switch (c) {
+                                            case '<': return '&lt;';
+                                            case '>': return '&gt;';
+                                            case '&': return '&amp;';
+                                            case "\'": return '&apos;';
+                                            case '"': return '&quot;';
+                                        }
+                                    });
+                                };
+                                
+                                xmlText = xmlText.split(resTag).join(escapeXml(resSymbol));
+                                xmlText = xmlText.split(actTag).join(escapeXml(actionText));
                             });
                         });
                     }
@@ -1944,18 +1915,16 @@
                 }
                 
                 const blob = await loadedZip.generateAsync({type: "blob"});
-                saveAs(blob, "작성완료_" + file.name);
-                alert("HWPX 파일 변환 및 다운로드가 완료되었습니다!\n\n(주의: 만약 일부 칸이 치환되지 않았다면, HWPX 템플릿의 태그가 쪼개졌을 수 있습니다. 해당 칸은 메모장에서 태그를 작성해 복사/붙여넣기 해주세요.)");
+                const sectorName = currentSector === 'academic' ? '학사분야' : '회계분야';
+                saveAs(blob, `완성본_자가진단표(${sectorName}).hwpx`);
+                alert("HWPX 자동 다운로드가 완료되었습니다!");
             } catch (e) {
                 console.error(e);
                 alert("HWPX 처리 중 오류가 발생했습니다: " + e.message);
             } finally {
                 document.getElementById('hwpxLoading').style.display = 'none';
-                fileInput.value = "";
             }
-        }
-
-        function buildPrintTable() {
+        }        function buildPrintTable() {
             const container = document.getElementById('printTableContainer');
             container.innerHTML = '';
 
