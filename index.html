@@ -1368,6 +1368,62 @@
                         renderCategoryMenu();
                         updateDashboardStats();
                         setSyncStatus('ready', '시트 연동 및 로드 완료');
+                    } else {
+                        setSyncStatus('ready', '서버 데이터가 비어있음 (새 시트)');
+                    }
+                })
+                .catch(err => {
+                    setSyncStatus('error', '데이터 연동 오류: ' + err.toString());
+                });
+        }
+
+        /**
+         * 상태등 배지 변경 유틸
+         */
+        function setSyncStatus(status, text) {
+            const el = document.getElementById('syncIndicator');
+            if (!el) return;
+
+            let icon = '';
+            let colorClass = '';
+
+            switch (status) {
+                case 'loading':
+                    icon = '<i class="fa-solid fa-rotate animate-spin text-[10px]"></i>';
+                    colorClass = 'bg-blue-100 text-blue-800';
+                    break;
+                case 'saving':
+                    icon = '<i class="fa-solid fa-cloud-arrow-up animate-bounce text-[10px]"></i>';
+                    colorClass = 'bg-amber-100 text-amber-800';
+                    break;
+                case 'ready':
+                    icon = '<i class="fa-solid fa-cloud-check text-green-600 text-[10px]"></i>';
+                    colorClass = 'bg-green-100 text-green-800';
+                    break;
+                case 'error':
+                    icon = '<i class="fa-solid fa-triangle-exclamation text-red-600 text-[10px]"></i>';
+                    colorClass = 'bg-red-100 text-red-800';
+                    break;
+                case 'offline':
+                    icon = '<i class="fa-solid fa-plug-circle-xmark text-slate-500 text-[10px]"></i>';
+                    colorClass = 'bg-slate-100 text-slate-700';
+                    break;
+            }
+
+            el.className = `inline-flex items-center gap-1.5 font-bold px-2.5 py-1 rounded-md ${colorClass} transition-all duration-200`;
+            el.innerHTML = `${icon} ${text}`;
+        }
+
+        // 상/하반기 전환 탭 제어
+        function switchPeriod(period) {
+            currentPeriod = period;
+            
+            const btn1 = document.getElementById('btnPeriodFirst');
+            const btn2 = document.getElementById('btnPeriodSecond');
+            
+            if (period === 'first') {
+                btn1.className = "px-4 py-2 rounded-md font-semibold text-sm transition-all duration-200 bg-white text-indigo-900 shadow";
+                btn2.className = "px-4 py-2 rounded-md font-semibold text-sm transition-all duration-200 text-slate-600 hover:text-slate-900";
             } else {
                 btn2.className = "px-4 py-2 rounded-md font-semibold text-sm transition-all duration-200 bg-white text-indigo-900 shadow";
                 btn1.className = "px-4 py-2 rounded-md font-semibold text-sm transition-all duration-200 text-slate-600 hover:text-slate-900";
