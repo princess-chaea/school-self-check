@@ -1477,17 +1477,38 @@
 
         function renderCategoryMenu() {
             const container = document.getElementById('categoryContainer');
+            if (!container) return;
             container.innerHTML = '';
 
             const cats = checklistDatabase[currentSector].categories;
-            document.getElementById('catTotal').innerText = `${cats.length}개 분야`;
+            const totalEl = document.getElementById('catTotal');
+            if(totalEl) totalEl.innerText = `${cats.length}개 분야`;
 
             cats.forEach((cat, idx) => {
+                const prefix = cat.id.split('-')[0];
+                const isFirstOfMajor = idx === 0 || cats[idx-1].id.split('-')[0] !== prefix;
+                
+                if (isFirstOfMajor) {
+                    const majorTitle = getMajorTitle(currentSector, prefix);
+                    const headerHtml = `
+                        <div class="mt-5 mb-2 text-[14px] font-extrabold text-slate-800 border-b-2 border-slate-300 pb-1 flex items-center gap-1.5 px-1">
+                            <span class="bg-indigo-600 text-white text-[11px] px-2 py-0.5 rounded-md shadow-sm">${prefix}</span>
+                            <span>${majorTitle}</span>
+                        </div>
+                    `;
+                    container.insertAdjacentHTML('beforeend', headerHtml);
+                }
+
                 const items = cat.items;
                 let checkedCount = 0;
                 items.forEach(it => {
-                    const state = userProgress[currentPeriod][currentSector][cat.id][it.no];
-                    if (state && state.result) checkedCount++;
+                    if (userProgress[currentPeriod] && 
+                        userProgress[currentPeriod][currentSector] && 
+                        userProgress[currentPeriod][currentSector][cat.id] && 
+                        userProgress[currentPeriod][currentSector][cat.id][it.no]) {
+                        const state = userProgress[currentPeriod][currentSector][cat.id][it.no];
+                        if (state.result && state.result !== '') checkedCount++;
+                    }
                 });
 
                 const activeClass = idx === currentCategoryIndex
@@ -1495,12 +1516,12 @@
                     : "hover:bg-slate-50 text-slate-600";
 
                 const itemHtml = `
-          <button onclick="selectCategory(${idx})" class="w-full text-left p-3 rounded-lg transition-all flex items-center justify-between text-xs ${activeClass}">
+          <button onclick="selectCategory(${idx})" class="w-full text-left p-2.5 rounded-lg transition-all flex items-center justify-between text-xs ${activeClass} mb-1">
             <div class="flex flex-col gap-1 pr-2">
               <span class="text-[10px] text-slate-400 font-mono">구분 ${cat.id}</span>
-              <span class="truncate max-w-[200px]">${cat.title}</span>
+              <span class="truncate max-w-[190px]">${cat.title}</span>
             </div>
-            <span class="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 font-mono">
+            <span class="text-[10px] bg-white border border-slate-200 px-1.5 py-0.5 rounded text-slate-500 font-mono shadow-sm">
               ${checkedCount}/${items.length}
             </span>
           </button>
