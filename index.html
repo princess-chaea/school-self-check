@@ -181,20 +181,36 @@
         <!-- 분야 스위치 및 액션 툴바 -->
         <div
             class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <!-- 분야 토글 -->
-            <div class="inline-flex p-1 bg-slate-100 rounded-lg shrink-0">
-                <button id="btnAcademic" onclick="switchSector('academic')"
-                    class="px-5 py-2 rounded-md font-semibold text-sm transition-all duration-200 bg-white text-blue-900 shadow">
-                    <i class="fa-solid fa-graduation-cap mr-1.5"></i>학사분야 점검
-                </button>
-                <button id="btnFinance" onclick="switchSector('finance')"
-                    class="px-5 py-2 rounded-md font-semibold text-sm transition-all duration-200 text-slate-600 hover:text-slate-900">
-                    <i class="fa-solid fa-sack-dollar mr-1.5"></i>회계분야 점검
-                </button>
+            <!-- 시기 및 분야 토글 -->
+            <div class="flex flex-wrap items-center gap-2">
+                <div class="inline-flex p-1 bg-slate-100 rounded-lg shrink-0">
+                    <button id="btnPeriodFirst" onclick="switchPeriod('first')"
+                        class="px-4 py-2 rounded-md font-semibold text-sm transition-all duration-200 bg-white text-indigo-900 shadow">
+                        상반기
+                    </button>
+                    <button id="btnPeriodSecond" onclick="switchPeriod('second')"
+                        class="px-4 py-2 rounded-md font-semibold text-sm transition-all duration-200 text-slate-600 hover:text-slate-900">
+                        하반기
+                    </button>
+                </div>
+                <div class="inline-flex p-1 bg-slate-100 rounded-lg shrink-0">
+                    <button id="btnAcademic" onclick="switchSector('academic')"
+                        class="px-5 py-2 rounded-md font-semibold text-sm transition-all duration-200 bg-white text-blue-900 shadow">
+                        <i class="fa-solid fa-graduation-cap mr-1.5"></i>학사분야 점검
+                    </button>
+                    <button id="btnFinance" onclick="switchSector('finance')"
+                        class="px-5 py-2 rounded-md font-semibold text-sm transition-all duration-200 text-slate-600 hover:text-slate-900">
+                        <i class="fa-solid fa-sack-dollar mr-1.5"></i>회계분야 점검
+                    </button>
+                </div>
             </div>
 
-            <!-- 정갈한 서식 기반 인쇄 버튼만 유지 -->
+            <!-- 정갈한 서식 기반 인쇄 및 캐시 버튼 -->
             <div class="flex items-center gap-3">
+                <button onclick="restoreLocalCache()" id="btnRestoreCache" style="display: none;"
+                    class="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-bold transition-all shadow-md flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left"></i>임시저장 복구
+                </button>
                 <button onclick="window.print()"
                     class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold transition-all shadow-md flex items-center gap-2">
                     <i class="fa-solid fa-print"></i>A4 격자 표 인쇄 / PDF 저장
@@ -585,13 +601,14 @@
         };
 
         // 2. 현재 앱 상태 관리
+        let currentPeriod = 'first';
         let currentSector = 'academic';
         let currentCategoryIndex = 0;
 
-        // 개별 이력정보(점검자, 날짜)까지 담는 사용자 진단 오브젝트
+        // 개별 이력정보(점검자, 날짜)까지 담는 사용자 진단 오브젝트 (상/하반기 분리)
         let userProgress = {
-            academic: {},
-            finance: {}
+            first: { academic: {}, finance: {} },
+            second: { academic: {}, finance: {} }
         };
 
         // DOM 참조
@@ -611,26 +628,96 @@
 
             // 서버로부터 기존 체크리스트 데이터 전송 받아 복구
             loadExistingDataFromServer();
+            
+            // 로컬 캐시 존재 여부 확인
+            checkLocalCache();
 
             elSchoolName.addEventListener('input', () => { updateDashboardStats(); });
-            elInspectorName.addEventListener('input', () => { updateDashboardStats(); });
-            elInspectionDate.addEventListener('change', () => { updateDashboardStats(); });
+            elInspectorName.addEventListener('input', () => { updateDashboardStats(); saveLocalCache(); });
+            elInspectionDate.addEventListener('change', () => { updateDashboardStats(); saveLocalCache(); });
         };
 
         function initProgressStructure() {
-            ['academic', 'finance'].forEach(sect => {
-                checklistDatabase[sect].categories.forEach(cat => {
-                    userProgress[sect][cat.id] = {};
-                    cat.items.forEach(item => {
-                        userProgress[sect][cat.id][item.no] = {
-                            result: '',      // '', 'O', 'S', 'X'
-                            action: '',      // 미흡내용/조치계획
-                            inspector: '',   // 항목별 점검자명
-                            date: ''         // 항목별 점검일자
-                        };
+            ['first', 'second'].forEach(period => {
+                ['academic', 'finance'].forEach(sect => {
+                    checklistDatabase[sect].categories.forEach(cat => {
+                        userProgress[period][sect][cat.id] = {};
+                        cat.items.forEach(item => {
+                            userProgress[period][sect][cat.id][item.no] = {
+                                result: '',      // '', 'O', 'S', 'X'
+                                action: '',      // 미흡내용/조치계획
+                                inspector: '',   // 항목별 점검자명
+                                date: ''         // 항목별 점검일자
+                            };
+                        });
                     });
                 });
             });
+        }
+
+        /**
+         * 로컬 스토리지에 현재 상태 자동 저장 (오프라인/에러 대비)
+         */
+        function saveLocalCache() {
+            const cacheData = {
+                progress: userProgress,
+                inspector: elInspectorName.value,
+                date: elInspectionDate.value,
+                timestamp: new Date().getTime()
+            };
+            localStorage.setItem('checklistCache', JSON.stringify(cacheData));
+        }
+
+        function checkLocalCache() {
+            const cache = localStorage.getItem('checklistCache');
+            if (cache) {
+                try {
+                    const parsed = JSON.parse(cache);
+                    const btn = document.getElementById('btnRestoreCache');
+                    if (btn) {
+                        btn.style.display = 'flex';
+                        const timeStr = new Date(parsed.timestamp).toLocaleString();
+                        btn.title = `${timeStr} 에 임시저장된 데이터가 있습니다.`;
+                    }
+                } catch(e) {}
+            }
+        }
+
+        function restoreLocalCache() {
+            if(!confirm("브라우저에 임시저장된 마지막 작업 상태를 불러오시겠습니까?\\n(저장되지 않고 날아간 데이터를 복구합니다)")) return;
+            
+            const cache = localStorage.getItem('checklistCache');
+            if(cache) {
+                try {
+                    const parsed = JSON.parse(cache);
+                    if(parsed.progress) {
+                        // 기존 상태 병합
+                        Object.keys(parsed.progress).forEach(sect => {
+                            if(userProgress[sect]) {
+                                Object.keys(parsed.progress[sect]).forEach(cat => {
+                                    if(userProgress[sect][cat]) {
+                                        Object.keys(parsed.progress[sect][cat]).forEach(item => {
+                                            const cachedItem = parsed.progress[sect][cat][item];
+                                            if (cachedItem.result) {
+                                                userProgress[sect][cat][item] = cachedItem;
+                                            }
+                                        });
+                                    }
+                                });
+                            }
+                        });
+                    }
+                    if(parsed.inspector) elInspectorName.value = parsed.inspector;
+                    if(parsed.date) elInspectionDate.value = parsed.date;
+                    
+                    loadActiveCategoryItems();
+                    renderCategoryMenu();
+                    updateDashboardStats();
+                    alert("임시저장된 데이터가 성공적으로 복구되었습니다.\\n(서버에 확실히 반영하려면 항목 하나를 변경해주세요)");
+                } catch(e) {
+                    alert("캐시를 불러오는 중 오류가 발생했습니다.");
+                }
+            }
         }
 
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyrad8viJgIYDMBZgbZd97qsykjM0aamKHH4GiFWWQ4324R7-aZW4k3taGiYAY-GkoH-Q/exec';
@@ -646,8 +733,9 @@
                 .then(response => {
                     if (response.success && response.data) {
                         response.data.forEach(row => {
-                            if (userProgress[row.sector] && userProgress[row.sector][row.catId] && userProgress[row.sector][row.catId][row.itemNo]) {
-                                userProgress[row.sector][row.catId][row.itemNo] = {
+                            const p = row.period || 'first';
+                            if (userProgress[p] && userProgress[p][row.sector] && userProgress[p][row.sector][row.catId] && userProgress[p][row.sector][row.catId][row.itemNo]) {
+                                userProgress[p][row.sector][row.catId][row.itemNo] = {
                                     result: row.result,
                                     action: row.action,
                                     inspector: row.inspector,
@@ -705,6 +793,26 @@
             el.innerHTML = `${icon} ${text}`;
         }
 
+        // 상/하반기 전환 탭 제어
+        function switchPeriod(period) {
+            currentPeriod = period;
+            
+            const btn1 = document.getElementById('btnPeriodFirst');
+            const btn2 = document.getElementById('btnPeriodSecond');
+            
+            if (period === 'first') {
+                btn1.className = "px-4 py-2 rounded-md font-semibold text-sm transition-all duration-200 bg-white text-indigo-900 shadow";
+                btn2.className = "px-4 py-2 rounded-md font-semibold text-sm transition-all duration-200 text-slate-600 hover:text-slate-900";
+            } else {
+                btn2.className = "px-4 py-2 rounded-md font-semibold text-sm transition-all duration-200 bg-white text-indigo-900 shadow";
+                btn1.className = "px-4 py-2 rounded-md font-semibold text-sm transition-all duration-200 text-slate-600 hover:text-slate-900";
+            }
+            
+            renderCategoryMenu();
+            loadActiveCategoryItems();
+            updateDashboardStats();
+        }
+
         // 3. 분야 전환 탭 제어
         function switchSector(sector) {
             currentSector = sector;
@@ -738,7 +846,7 @@
                 const items = cat.items;
                 let checkedCount = 0;
                 items.forEach(it => {
-                    const state = userProgress[currentSector][cat.id][it.no];
+                    const state = userProgress[currentPeriod][currentSector][cat.id][it.no];
                     if (state && state.result) checkedCount++;
                 });
 
@@ -857,7 +965,7 @@
             let checked = 0;
 
             activeCat.items.forEach(it => {
-                const state = userProgress[currentSector][activeCat.id][it.no];
+                const state = userProgress[currentPeriod][currentSector][activeCat.id][it.no];
                 if (state && state.result) checked++;
             });
 
@@ -877,14 +985,19 @@
             }
             const activeDate = elInspectionDate.value || new Date().toISOString().split('T')[0];
 
-            // 모델 업데이트
-            userProgress[currentSector][catId][itemNo].result = value;
-            userProgress[currentSector][catId][itemNo].inspector = activeInspector;
-            userProgress[currentSector][catId][itemNo].date = activeDate;
+            // 토글 선택 해제 로직 (이미 같은 값을 누른 경우 취소)
+            const currentState = userProgress[currentPeriod][currentSector][catId][itemNo].result;
+            if (currentState === value) {
+                userProgress[currentPeriod][currentSector][catId][itemNo].result = '';
+            } else {
+                userProgress[currentPeriod][currentSector][catId][itemNo].result = value;
+                userProgress[currentPeriod][currentSector][catId][itemNo].inspector = activeInspector;
+                userProgress[currentPeriod][currentSector][catId][itemNo].date = activeDate;
+            }
 
-            // 이행(O)이면 조치계획 공백 청소
-            if (value === 'O') {
-                userProgress[currentSector][catId][itemNo].action = '';
+            // 이행(O)이거나 미선택일 경우 조치계획 공백 청소
+            if (userProgress[currentPeriod][currentSector][catId][itemNo].result === 'O' || userProgress[currentPeriod][currentSector][catId][itemNo].result === '') {
+                userProgress[currentPeriod][currentSector][catId][itemNo].action = '';
             }
 
             loadActiveCategoryItems();
@@ -893,6 +1006,9 @@
 
             // 서버 자동 백업 기록
             syncSingleItemToServer(catId, itemNo);
+            
+            // 로컬 브라우저 자동 임시저장 (보험용)
+            saveLocalCache();
         }
 
         /**
@@ -908,11 +1024,11 @@
             const activeDate = elInspectionDate.value || new Date().toISOString().split('T')[0];
 
             // 이전값과 동일하면 백그라운드 서버 콜 생략
-            if (userProgress[currentSector][catId][itemNo].action === value) return;
+            if (userProgress[currentPeriod][currentSector][catId][itemNo].action === value) return;
 
-            userProgress[currentSector][catId][itemNo].action = value;
-            userProgress[currentSector][catId][itemNo].inspector = activeInspector;
-            userProgress[currentSector][catId][itemNo].date = activeDate;
+            userProgress[currentPeriod][currentSector][catId][itemNo].action = value;
+            userProgress[currentPeriod][currentSector][catId][itemNo].inspector = activeInspector;
+            userProgress[currentPeriod][currentSector][catId][itemNo].date = activeDate;
 
             // 배지만 슬며시 변경
             const badge = document.getElementById(`badge-${catId}-${itemNo}`);
@@ -923,6 +1039,9 @@
 
             updateDashboardStats();
             syncSingleItemToServer(catId, itemNo);
+            
+            // 로컬 브라우저 자동 임시저장 (보험용)
+            saveLocalCache();
         }
 
         /**
@@ -933,9 +1052,10 @@
 
             const cat = checklistDatabase[currentSector].categories.find(c => c.id === catId);
             const item = cat.items.find(i => i.no === itemNo);
-            const state = userProgress[currentSector][catId][itemNo];
+            const state = userProgress[currentPeriod][currentSector][catId][itemNo];
 
             const payload = JSON.stringify({
+                period: currentPeriod,
                 sector: currentSector,
                 catId: catId,
                 catTitle: cat.title,
@@ -980,7 +1100,7 @@
                 checklistDatabase[sector].categories.forEach(cat => {
                     cat.items.forEach(it => {
                         totalCount++;
-                        const state = userProgress[sector][cat.id][it.no];
+                        const state = userProgress[currentPeriod][sector][cat.id][it.no];
                         if (state && state.result) {
                             checkedCount++;
                             if (state.result === 'O') okCount++;
@@ -1021,7 +1141,7 @@
             tbody.innerHTML = '';
 
             activeCat.items.forEach(item => {
-                const state = userProgress[currentSector][activeCat.id][item.no];
+                const state = userProgress[currentPeriod][currentSector][activeCat.id][item.no];
                 const result = state ? state.result : '';
                 const action = state ? state.action : '';
                 const inspector = state ? state.inspector : '';
@@ -1066,9 +1186,9 @@
               </td>
               <td class="p-3 text-center">
                 <div class="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-100 gap-1 shadow-inner">
-                  <button onclick="setItemResult('${activeCat.id}', '${item.no}', 'O')" class="px-2.5 py-1.5 rounded-md text-xs font-bold border transition-all ${btnOClass}">○ 이행</button>
-                  <button onclick="setItemResult('${activeCat.id}', '${item.no}', 'S')" class="px-2.5 py-1.5 rounded-md text-xs font-bold border transition-all ${btnSClass}">△ 미흡</button>
-                  <button onclick="setItemResult('${activeCat.id}', '${item.no}', 'X')" class="px-2.5 py-1.5 rounded-md text-xs font-bold border transition-all ${btnXClass}">× 미이행</button>
+                  <button onclick="setItemResult('${activeCat.id}', '${item.no}', 'O')" class="whitespace-nowrap px-2.5 py-1.5 rounded-md text-xs font-bold border transition-all ${btnOClass}">○ 이행</button>
+                  <button onclick="setItemResult('${activeCat.id}', '${item.no}', 'S')" class="whitespace-nowrap px-2.5 py-1.5 rounded-md text-xs font-bold border transition-all ${btnSClass}">△ 미흡</button>
+                  <button onclick="setItemResult('${activeCat.id}', '${item.no}', 'X')" class="whitespace-nowrap px-2.5 py-1.5 rounded-md text-xs font-bold border transition-all ${btnXClass}">× 미이행</button>
                 </div>
               </td>
               <td class="p-3">
@@ -1100,18 +1220,46 @@
             const sectorTitle = checklistDatabase[currentSector].title;
 
             cats.forEach((cat, cIdx) => {
-                let catHtml = `
-          <div class="${cIdx > 0 ? 'page-break' : ''} mb-8">
+                const prefix = cat.id.split('-')[0];
+                let majorTitle = "";
+                
+                if (currentSector === 'academic') {
+                    if (prefix === '1') majorTitle = "유치원 학사관리";
+                    else if (prefix === '2') majorTitle = "초등 학사관리";
+                    else if (prefix === '3') majorTitle = "교육과정 운영";
+                    else if (prefix === '4') majorTitle = "방과후학교 운영";
+                    else if (prefix === '5') majorTitle = "학생생활교육 및 안전";
+                    else if (prefix === '6') majorTitle = "현장체험학습 및 봉사";
+                    else majorTitle = "학사관리";
+                } else {
+                    if (prefix === '1') majorTitle = "일반 행정";
+                    else if (prefix === '2') majorTitle = "공직기강 및 행동강령";
+                    else if (prefix === '3') majorTitle = "계약 및 시설 공사";
+                    else if (prefix === '4') majorTitle = "산업안전보건 및 시설안전";
+                    else if (prefix === '5') majorTitle = "지방공무원 및 공무직 복무";
+                    else if (prefix === '6') majorTitle = "공유재산 및 물품 관리";
+                    else if (prefix === '7') majorTitle = "예산 집행 및 지출";
+                    else majorTitle = "회계관리";
+                }
+
+                const isFirstOfMajor = cIdx === 0 || cats[cIdx-1].id.split('-')[0] !== prefix;
+                let pillHtml = '';
+                if (isFirstOfMajor) {
+                    pillHtml = `
             <!-- 대분류 알약 모양 배지 (이미지 서식 반영) -->
             <div style="text-align: center; margin-bottom: 20px;">
                 <div style="display: inline-block; background: linear-gradient(to bottom, #f9f9f9, #e0f0e0); border: 2px solid #008000; border-radius: 30px; padding: 5px 40px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                     <h2 style="margin: 0; font-size: 16pt; font-weight: bold; color: #000; letter-spacing: 2px;">
-                        1. ${sectorTitle.replace(' 자가진단표', '')} 행정
+                        ${prefix}. ${majorTitle}
                     </h2>
                 </div>
-            </div>
+            </div>`;
+                }
 
-            <!-- 중분류 박스 (1-1 공문서 관리 스타일) -->
+                let catHtml = `
+          <div class="${cIdx > 0 ? 'page-break' : ''} mb-8">
+            ${pillHtml}
+            <!-- 중분류 박스 -->
             <div style="display: flex; align-items: stretch; margin-bottom: 15px; border: 2px solid #008000; height: 35px;">
                 <div style="background-color: #008000; color: #fff; font-weight: bold; padding: 0 15px; font-size: 14pt; display: flex; align-items: center; justify-content: center;">
                     ${cat.id}
@@ -1141,7 +1289,7 @@
         `;
 
                 cat.items.forEach(it => {
-                    const state = userProgress[currentSector][cat.id][it.no];
+                    const state = userProgress[currentPeriod][currentSector][cat.id][it.no];
                     let resSymbol = " ";
                     if (state && state.result === 'O') resSymbol = "○";
                     else if (state && state.result === 'S') resSymbol = "△";
