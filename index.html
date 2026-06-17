@@ -7,7 +7,7 @@
     <title>하주초등학교 자율 자가진단 시스템</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="templates.js"></script>
+    
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -2769,10 +2769,6 @@
             "scope": "각급학교"
           },
           {
-            "isGroupHeader": true,
-            "content": "선금 지급"
-          },
-          {
             "no": "3-3_6_R",
             "content": "- 선금보증서 징구 및 계약상태 변경 시에 따른 조치 여부",
             "actionCode": "3-3_6_A",
@@ -4832,7 +4828,7 @@
                 return;
             }
 
-            document.getElementById('hwpxLoading').style.display = 'inline-block';
+            
 
             try {
                 const b64 = HWPX_TEMPLATES[currentSector];
