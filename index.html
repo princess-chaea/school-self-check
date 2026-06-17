@@ -87,7 +87,7 @@ const HWPX_TEMPLATES = {
     <!-- 대시보드 및 네비게이션 (no-print) -->
     <header class="bg-blue-900 text-white shadow-lg no-print">
         <div
-            class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            class="max-w-[1600px] mx-auto px-4 py-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
             <div class="flex items-center gap-3">
                 <div class="bg-white text-blue-950 p-2.5 rounded-lg shadow">
                     <i class="fa-solid fa-clipboard-check text-2xl"></i>
@@ -122,7 +122,7 @@ const HWPX_TEMPLATES = {
         </div>
     </header>
 
-    <main class="flex-1 max-w-7xl mx-auto w-full px-4 py-6 sm:px-6 lg:px-8 flex flex-col gap-6 no-print">
+    <main class="flex-1 max-w-[1600px] mx-auto w-full px-4 py-6 sm:px-6 lg:px-8 flex flex-col gap-6 no-print">
         <!-- 실시간 자동저장 상태바 알림 배너 -->
         <div id="statusAlert"
             class="bg-indigo-50 border-l-4 border-indigo-500 p-3 rounded text-xs text-indigo-900 flex justify-between items-center transition-all duration-300">
@@ -3873,10 +3873,10 @@ const checklistDatabase = {
         /**
          * 특정 문항 점검 결과 변경 시 (구글 시트 즉시 자동 전송 연동)
          */
-        function setItemResult(catId, itemNo, value) {
+        async function setItemResult(catId, itemNo, value) {
             const activeInspector = elInspectorName.value.trim();
             if (!activeInspector) {
-                alert('상단의 [점검자명(실명 기재)] 란에 담당자 이름을 먼저 입력해주세요.');
+                showToast('상단의 [점검자명(실명 기재)] 란에 담당자 이름을 먼저 입력해주세요.');
                 elInspectorName.focus();
                 return;
             }
@@ -3889,7 +3889,7 @@ const checklistDatabase = {
 
             // 이미 체크된 항목을 다른 사람이 바꿀 때 확인 창 띄우기
             if (currentState && currentInspector && currentInspector !== activeInspector) {
-                if (!confirm(`이 항목은 이전에 ${currentInspector}님이 점검하셨습니다.\n정말 점검결과를 바꾸시겠습니까?`)) {
+                if (!(await showConfirm(`이 항목은 이전에 ${currentInspector}님이 점검하셨습니다.\n정말 점검결과를 바꾸시겠습니까?`))) {
                     return; // 취소 시 함수 종료
                 }
             }
@@ -3924,7 +3924,7 @@ const checklistDatabase = {
         function setItemAction(catId, itemNo, value) {
             const activeInspector = elInspectorName.value.trim();
             if (!activeInspector) {
-                alert('상단의 [점검자명(실명 기재)] 란에 담당자 이름을 먼저 입력해주세요.');
+                showToast('상단의 [점검자명(실명 기재)] 란에 담당자 이름을 먼저 입력해주세요.');
                 elInspectorName.focus();
                 return;
             }
@@ -4066,8 +4066,10 @@ const checklistDatabase = {
         }
 
         async function downloadHWPX() {
+            const loader = document.getElementById('hwpxLoading');
+            if (loader) loader.classList.remove('hidden');
             if (typeof HWPX_TEMPLATES === 'undefined' || !HWPX_TEMPLATES[currentSector]) {
-                alert("내장된 템플릿을 찾을 수 없습니다.");
+                showToast("내장된 템플릿을 찾을 수 없습니다.");
                 return;
             }
             
@@ -4082,7 +4084,7 @@ const checklistDatabase = {
                 const sectionFiles = Object.keys(loadedZip.files).filter(name => name.startsWith("Contents/section") && name.endsWith(".xml"));
                 
                 if (sectionFiles.length === 0) {
-                    alert("HWPX 본문 데이터를 찾을 수 없습니다.");
+                    showToast("HWPX 본문 데이터를 찾을 수 없습니다.");
                     return;
                 }
                 
@@ -4131,12 +4133,12 @@ const checklistDatabase = {
                 const blob = await loadedZip.generateAsync({type: "blob"});
                 const sectorName = currentSector === 'academic' ? '학사분야' : '회계분야';
                 saveAs(blob, `완성본_자가진단표(${sectorName}).hwpx`);
-                alert("HWPX 자동 다운로드가 완료되었습니다!");
+                showToast("HWPX 자동 다운로드가 완료되었습니다!");
             } catch (e) {
                 console.error(e);
-                alert("HWPX 처리 중 오류가 발생했습니다: " + e.message);
+                showToast("HWPX 처리 중 오류가 발생했습니다: " + e.message);
             } finally {
-                document.getElementById('hwpxLoading').style.display = 'none';
+                if (loader) loader.classList.add('hidden');
             }
         }        function buildPrintTable() {
             const container = document.getElementById('printTableContainer');
@@ -4233,5 +4235,34 @@ const checklistDatabase = {
         }
     
 </script>
+
+<!-- Toast Container -->
+<div id="toastContainer" class="fixed top-5 right-5 z-[100] flex flex-col gap-2"></div>
+
+<!-- HWPX Loading Overlay -->
+<div id="hwpxLoading" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[999] hidden flex items-center justify-center">
+    <div class="bg-white p-6 rounded-2xl shadow-2xl flex items-center gap-4">
+        <div class="animate-spin rounded-full h-8 w-8 border-4 border-slate-200 border-t-blue-600"></div>
+        <p class="font-bold text-slate-800 text-lg">HWPX 다운로드 준비 중...</p>
+    </div>
+</div>
+
+<!-- Custom Confirm Modal -->
+<div id="customConfirmModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[999] hidden flex items-center justify-center">
+    <div class="bg-white p-6 rounded-2xl shadow-2xl max-w-sm w-full mx-4 transform transition-all">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="bg-amber-100 text-amber-600 p-2 rounded-full">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 class="font-bold text-lg text-slate-800">확인 필요</h3>
+        </div>
+        <p id="customConfirmMessage" class="text-sm text-slate-600 mb-6 whitespace-pre-wrap leading-relaxed"></p>
+        <div class="flex justify-end gap-2">
+            <button id="customConfirmCancelBtn" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 transition-colors">취소</button>
+            <button id="customConfirmOkBtn" class="px-4 py-2 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition-colors shadow-md">확인</button>
+        </div>
+    </div>
+</div>
+
 </body>
 </html>
