@@ -276,7 +276,7 @@
                             <tr
                                 class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                                 <th class="py-3 px-4 w-12 text-center whitespace-nowrap">번호</th>
-                                <th class="py-3 px-4 w-[45rem] max-w-[45rem] min-w-[30rem]">감사 자가진단 및 점검 내용</th>
+                                <th class="py-3 px-4 w-[38rem] max-w-[38rem] min-w-[30rem]">감사 자가진단 및 점검 내용</th>
                                 <th class="py-3 px-4 min-w-[8rem] w-[8rem] text-center whitespace-nowrap">점검결과 (○, △, ×)</th>
                                 <th class="py-3 px-4 w-[13rem] min-w-[10rem]">미흡/미이행 내용 및 조치사항</th>
                                 <th class="py-3 px-4 w-24 text-center whitespace-nowrap">점검대상</th>
@@ -4852,14 +4852,14 @@
                 const rowHtml = `
           <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
             <td class="py-3 px-4 font-mono text-center text-slate-400 text-xs font-bold">${seqCounter++}</td>
-            <td class="py-3 px-4 text-slate-700 font-medium leading-relaxed max-w-[45rem]">
+            <td class="py-3 px-4 text-slate-700 font-medium leading-relaxed max-w-[38rem]">
               
               <div class="group relative inline-block cursor-help w-full">
-                <span class="block truncate max-w-[43rem] text-slate-800 font-semibold">${item.content.includes('. ')
+                <span class="block truncate max-w-[36rem] text-slate-800 font-semibold">${item.content.includes('. ')
                         ? item.content.substring(0, item.content.indexOf('. ') + 1)
                         : item.content.split('\n')[0]
                     }</span>
-                <div class="invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all absolute left-0 bottom-full mb-2 w-max max-w-[40rem] p-3 bg-slate-800 text-slate-100 text-xs rounded-lg shadow-xl z-50 whitespace-pre-wrap leading-relaxed">${item.content}</div>
+                <div class="invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all absolute left-0 bottom-full mb-2 w-max max-w-[36rem] p-3 bg-slate-800 text-slate-100 text-xs rounded-lg shadow-xl z-50 whitespace-pre-wrap leading-relaxed">${item.content}</div>
               </div>
 
               ${historyBadge}
