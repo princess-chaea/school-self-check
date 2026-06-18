@@ -276,9 +276,9 @@
                             <tr
                                 class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                                 <th class="py-3 px-4 w-12 text-center whitespace-nowrap">번호</th>
-                                <th class="py-3 px-4 w-[30rem] max-w-[30rem] min-w-[20rem]">감사 자가진단 및 점검 내용</th>
-                                <th class="py-3 px-4 min-w-[10rem] w-[10rem] text-center whitespace-nowrap">점검결과 (○, △, ×)</th>
-                                <th class="py-3 px-4 w-[15rem] min-w-[12rem]">미흡/미이행 내용 및 조치사항</th>
+                                <th class="py-3 px-4 w-[45rem] max-w-[45rem] min-w-[30rem]">감사 자가진단 및 점검 내용</th>
+                                <th class="py-3 px-4 min-w-[8rem] w-[8rem] text-center whitespace-nowrap">점검결과 (○, △, ×)</th>
+                                <th class="py-3 px-4 w-[13rem] min-w-[10rem]">미흡/미이행 내용 및 조치사항</th>
                                 <th class="py-3 px-4 w-24 text-center whitespace-nowrap">점검대상</th>
                             </tr>
                         </thead>
@@ -4441,7 +4441,10 @@
         /**
          * 페이지 로드 시 구글 시트로부터 실시간 데이터 전체 로드 및 초기화
          */
-        function applyServerDataToProgress(dataList) {
+        function applyServerDataToProgress(dataList, isFromServer = false) {
+            if (isFromServer) {
+                initProgressStructure();
+            }
             dataList.forEach(row => {
                 if (!row.key) return;
                 const parts = row.key.split('_');
@@ -4478,7 +4481,7 @@
                 const cached = localStorage.getItem('chklist_cache_data');
                 if (cached) {
                     const parsed = JSON.parse(cached);
-                    applyServerDataToProgress(parsed);
+                    applyServerDataToProgress(parsed, false);
                 }
             } catch (e) { console.error(e); }
 
@@ -4487,7 +4490,7 @@
                 .then(res => res.json())
                 .then(response => {
                     if (response.success && response.data) {
-                        applyServerDataToProgress(response.data);
+                        applyServerDataToProgress(response.data, true);
                         // 최신 데이터 캐시 저장
                         localStorage.setItem('chklist_cache_data', JSON.stringify(response.data));
                         setSyncStatus('ready', '시트 연동 및 로드 완료');
